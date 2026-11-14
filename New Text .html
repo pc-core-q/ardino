@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تجربة المساعد الذكي - أمير أحمد</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 16px; }
+    .container { max-width: 500px; margin: auto; }
+    .card { background: #1e293b; border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    h2 { margin: 0 0 10px; font-size: 1.15rem; color: #38bdf8; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat { background: #0f172a; padding: 12px; border-radius: 12px; text-align: center; }
+    .stat-val { font-size: 1.5rem; font-weight: bold; color: #22d3ee; }
+    input[type=range] { width: 100%; accent-color: #38bdf8; margin: 8px 0; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 6px; }
+    .btn-voice { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; }
+    .btn-voice.listening { background: #dc2626; animation: pulse 1s infinite; }
+    .btn-mode { background: #334155; color: #e2e8f0; }
+    .btn-mode.active { background: #059669; color: white; }
+    .ai-box { background: #0f172a; padding: 10px; border-radius: 10px; font-size: 0.9rem; margin-top: 10px; min-height: 40px; border-right: 3px solid #7c3aed; }
+    input[type=password], input[type=text] { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; margin-top: 6px; }
+    canvas { width: 100%; height: 120px; background: #0f172a; border-radius: 10px; margin-top: 8px; }
+    .sim-badge { background: #0284c7; color: white; font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; float: left; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h2>🎙️ المساعد الذكي (Llama 3.3) <span class="sim-badge">وضع المحاكاة</span></h2>
+    <input type="password" id="apiKey" placeholder="أدخل Groq API Key هنا (يبدأ بـ gsk_)">
+    <button class="btn btn-voice" id="micBtn" onclick="startVoice()">اضغط للتحدث (مثلاً: أشعر بالحر / الجو مظلم)</button>
+    <div style="display:flex; gap:6px; margin-top:8px;">
+      <input type="text" id="textCmd" placeholder="أو اكتب أمرك هنا...">
+      <button class="btn" style="width:80px; margin-top:6px; background:#0284c7; color:white;" onclick="sendTextCmd()">إرسال</button>
+    </div>
+    <div class="ai-box" id="aiLog">جاهز لاستقبال أوامرك الصوتية أو النصية...</div>
+  </div>
+
+  <div class="card">
+    <h2>🔄 وضع نظام السيطرة (Control Mode)</h2>
+    <button class="btn btn-mode" id="modeBtn" onclick="toggleMode()">الوضع الحالي: مفتوح (Open-Loop يدوي/صوتي)</button>
+    <div id="setpointDiv" style="display:none; margin-top:10px;">
+      <label>درجة الحرارة المطلوبة (Set-Point): <span id="spVal">26</span>°C</label>
+      <input type="range" min="18" max="35" value="26" oninput="updateSetpoint(this.value)">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎛️ التحكم المباشر (PWM Actuators)</h2>
+    <label>💡 شدة الإضاءة (LED): <span id="ledVal">0</span>%</label>
+    <input type="range" id="ledSlider" min="0" max="100" value="0" onchange="setActuators()">
+    <label>🌀 سرعة المروحة (DC Fan): <span id="fanVal">0</span>%</label>
+    <input type="range" id="fanSlider" min="0" max="100" value="0" onchange="setActuators()">
+  </div>
+
+  <div class="card">
+    <h2>📊 التغذية الراجعة واستجابة النظام (محاكاة)</h2>
+    <div class="grid">
+      <div class="stat"><div>الحرارة (DHT11)</div><div class="stat-val" id="tempDisp">28.5°C</div></div>
+      <div class="stat"><div>الإضاءة (LDR)</div><div class="stat-val" id="lightDisp">40%</div></div>
+    </div>
+    <canvas id="respChart" width="400" height="120"></canvas>
+  </div>
+</div>
+
+<script>
+  let isAuto = false;
+  let targetTemp = 26.0;
+  let simTemp = 28.5;
+  let simLight = 40;
+  let tempHistory = [];
+  let fanHistory = [];
+
+  const keyInput = document.getElementById('apiKey');
+  keyInput.value = localStorage.getItem('groq_key') || '';
+  keyInput.addEventListener('change', () => localStorage.setItem('groq_key', keyInput.value.trim()));
+
+  function setActuators() {
+    const led = document.getElementById('ledSlider').value;
+    const fan = document.getElementById('fanSlider').value;
+    document.getElementById('ledVal').innerText = led;
+    document.getElementById('fanVal').innerText = fan;
+  }
+
+  function toggleMode() {
+    isAuto = !isAuto;
+    const btn = document.getElementById('modeBtn');
+    const spDiv = document.getElementById('setpointDiv');
+    if (isAuto) {
+      btn.innerText = "الوضع الحالي: مغلق (Closed-Loop تلقائي)";
+      btn.classList.add('active');
+      spDiv.style.display = 'block';
+    } else {
+      btn.innerText = "الوضع الحالي: مفتوح (Open-Loop يدوي/صوتي)";
+      btn.classList.remove('active');
+      spDiv.style.display = 'none';
+    }
+    setActuators();
+  }
+
+  function updateSetpoint(val) {
+    targetTemp = parseFloat(val);
+    document.getElementById('spVal').innerText = val;
+  }
+
+  // محاكاة استجابة الحساسات والنظام المغلق كل ثانيتين
+  setInterval(() => {
+    const currentFan = parseInt(document.getElementById('fanSlider').value);
+    if (currentFan > 20) {
+      simTemp = Math.max(20.0, simTemp - (currentFan * 0.004));
+    } else {
+      simTemp = Math.min(33.0, simTemp + 0.15);
+    }
+
+    if (isAuto) {
+      let errorTemp = simTemp - targetTemp;
+      let autoFan = errorTemp <= 0 ? 0 : Math.min(100, Math.max(35, Math.round(errorTemp * 25)));
+      let autoLed = Math.max(0, Math.min(100, 100 - simLight));
+      document.getElementById('fanSlider').value = autoFan;
+      document.getElementById('fanVal').innerText = autoFan;
+      document.getElementById('ledSlider').value = autoLed;
+      document.getElementById('ledVal').innerText = autoLed;
+    }
+
+    document.getElementById('tempDisp').innerText = simTemp.toFixed(1) + '°C';
+    document.getElementById('lightDisp').innerText = simLight + '%';
+    drawChart(simTemp, parseInt(document.getElementById('fanSlider').value));
+  }, 2000);
+
+  function drawChart(temp, fan) {
+    tempHistory.push(temp); fanHistory.push(fan);
+    if (tempHistory.length > 25) { tempHistory.shift(); fanHistory.shift(); }
+    const c = document.getElementById('respChart');
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.beginPath();
+    fanHistory.forEach((v, i) => { let x = i * (c.width / 24); let y = c.height - (v * 1.1); i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); });
+    ctx.stroke();
+    ctx.strokeStyle = '#fbbf24'; ctx.beginPath();
+    tempHistory.forEach((v, i) => { let x = i * (c.width / 24); let y = c.height - ((v - 15) * 4); i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); });
+    ctx.stroke();
+  }
+
+  function startVoice() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { alert("المتصفح لا يدعم التعرف الصوتي، استخدم Chrome."); return; }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-IQ';
+    const btn = document.getElementById('micBtn');
+    btn.classList.add('listening');
+    btn.innerText = "جاري الاستماع... تحدث الآن";
+
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      document.getElementById('aiLog').innerText = "أنت: " + transcript;
+      processWithAI(transcript);
+    };
+    recognition.onerror = (e) => {
+      document.getElementById('aiLog').innerText = "تنبيه المايكروفون: تأكد من فتح الصفحة عبر رابط HTTPS (مثل Cloudflare Pages أو CodePen) ومنح صلاحية المايكروفون.";
+    };
+    recognition.onend = () => {
+      btn.classList.remove('listening');
+      btn.innerText = "اضغط للتحدث (مثلاً: أشعر بالحر / الجو مظلم)";
+    };
+    recognition.start();
+  }
+
+  function sendTextCmd() {
+    const txt = document.getElementById('textCmd').value.trim();
+    if (txt) { document.getElementById('aiLog').innerText = "أنت: " + txt; processWithAI(txt); }
+  }
+
+  async function processWithAI(userText) {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    if (!apiKey) { document.getElementById('aiLog').innerText = "يرجى إدخال Groq API Key أولاً!"; return; }
+    document.getElementById('aiLog').innerText = "جاري التفكير عبر Llama 3.3...";
+
+    const prompt = `أنت مساعد ذكي لنظام تحكم بغرفة (مصباح LED ومروحة DC). حلل طلب المستخدم: "${userText}".
+    أرجع النتيجة بصيغة JSON فقط بدون أي نص إضافي كالتالي:
+    {"led": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "fan": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "auto": true او false او null, "reply": "رد عربي قصير وودود"}`;
+
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.2
+        })
+      });
+      const data = await res.json();
+      let rawText = data.choices[0].message.content;
+      rawText = rawText.replace(/```json|```/g, '').trim();
+      const cmd = JSON.parse(rawText);
+
+      if (cmd.auto !== null && cmd.auto !== isAuto) toggleMode();
+      if (!isAuto) {
+        if (cmd.led >= 0) document.getElementById('ledSlider').value = cmd.led;
+        if (cmd.fan >= 0) document.getElementById('fanSlider').value = cmd.fan;
+        setActuators();
+      }
+      document.getElementById('aiLog').innerText = "المساعد (Llama): " + cmd.reply;
+      speakArabic(cmd.reply);
+    } catch (err) {
+      document.getElementById('aiLog').innerText = "حدث خطأ في الاتصال بنموذج Llama. تأكد من المفتاح والإنترنت.";
+    }
+  }
+
+  function speakArabic(text) {
+    if ('speechSynthesis' in window) {
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.lang = 'ar-SA';
+      window.speechSynthesis.speak(msg);
+    }
+  }
+</script>
+</body>
+</html>
