@@ -3,34 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نظام الغرفة الذكية | أمير أحمد</title>
+  <title>الغرفة الذكية المتكاملة | أمير أحمد</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
     :root {
-      --bg: #050814;
-      --card: rgba(17, 25, 48, 0.72);
-      --border: rgba(56, 189, 248, 0.22);
-      --cyan: #22d3ee;
-      --blue: #3b82f6;
-      --purple: #a855f7;
-      --green: #10b981;
-      --amber: #f59e0b;
-      --red: #ef4444;
+      --bg: #050814; --card: rgba(17, 25, 48, 0.78); --border: rgba(56, 189, 248, 0.22);
+      --cyan: #22d3ee; --purple: #a855f7; --green: #10b981; --amber: #f59e0b; --red: #ef4444;
     }
     * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
     body {
-      margin: 0; padding: 16px; color: #f8fafc; min-height: 100vh;
+      margin: 0; padding: 14px; color: #f8fafc; min-height: 100vh;
       background: radial-gradient(circle at 15% 15%, rgba(59,130,246,0.18), transparent 40%),
-                  radial-gradient(circle at 85% 85%, rgba(168,85,247,0.18), transparent 40%),
-                  var(--bg);
+                  radial-gradient(circle at 85% 85%, rgba(168,85,247,0.18), transparent 40%), var(--bg);
     }
     .container { max-width: 520px; margin: auto; }
-    .header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 14px; padding: 4px 2px;
-    }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .title-wrap h1 {
-      margin: 0; font-size: 1.25rem;
+      margin: 0; font-size: 1.2rem;
       background: linear-gradient(90deg, #38bdf8, #c084fc);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
@@ -39,72 +28,47 @@
       padding: 5px 11px; border-radius: 99px; font-size: 0.75rem; font-weight: bold;
       background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.4);
     }
-    .badge.online {
-      background: rgba(16, 185, 129, 0.15); color: var(--green); border-color: rgba(16, 185, 129, 0.4);
-      box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
-    }
+    .badge.online { background: rgba(16, 185, 129, 0.15); color: var(--green); border-color: rgba(16, 185, 129, 0.4); }
     .alert-banner {
-      display: none; background: rgba(239, 68, 68, 0.2); border: 1px solid var(--red);
-      color: #fecaca; padding: 12px; border-radius: 14px; margin-bottom: 14px;
-      text-align: center; font-weight: bold; animation: flash 1s infinite;
+      display: none; background: rgba(239, 68, 68, 0.25); border: 1px solid var(--red);
+      color: #fecaca; padding: 10px; border-radius: 14px; margin-bottom: 12px; text-align: center; font-weight: bold;
     }
     .card {
-      background: var(--card); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      border: 1px solid var(--border); border-radius: 20px; padding: 16px; margin-bottom: 14px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      background: var(--card); backdrop-filter: blur(14px); border: 1px solid var(--border);
+      border-radius: 18px; padding: 14px; margin-bottom: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
     }
-    .card-title { font-size: 0.95rem; font-weight: 700; color: #e2e8f0; margin: 0 0 12px; display: flex; justify-content: space-between; align-items: center; }
+    .card-title { font-size: 0.92rem; font-weight: 700; color: #e2e8f0; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; }
     .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .stat-box {
-      background: rgba(10, 15, 30, 0.75); border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px; padding: 10px 6px; text-align: center;
-    }
-    .stat-label { font-size: 0.72rem; color: #94a3b8; margin-bottom: 4px; }
-    .stat-num { font-size: 1.3rem; font-weight: 800; color: var(--cyan); }
+    .stat-box { background: rgba(10, 15, 30, 0.75); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 9px 4px; text-align: center; }
+    .stat-label { font-size: 0.7rem; color: #94a3b8; margin-bottom: 3px; }
+    .stat-num { font-size: 1.15rem; font-weight: 800; color: var(--cyan); }
     .stat-num.eco { color: var(--green); }
+    .stat-num.warn { color: var(--amber); }
     input[type=password], input[type=text] {
-      width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.25);
-      background: rgba(10, 15, 30, 0.85); color: white; font-size: 0.9rem; outline: none;
+      width: 100%; padding: 9px 11px; border-radius: 11px; border: 1px solid rgba(148,163,184,0.25);
+      background: rgba(10, 15, 30, 0.85); color: white; font-size: 0.88rem; outline: none;
     }
-    input[type=password]:focus, input[type=text]:focus { border-color: var(--cyan); }
-    .btn {
-      width: 100%; padding: 12px; border: none; border-radius: 14px; font-size: 0.95rem;
-      font-weight: 700; cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
-    }
-    .btn:active { transform: scale(0.98); }
-    .btn-mic {
-      background: linear-gradient(135deg, #2563eb, #9333ea); color: white; margin-top: 10px;
-      box-shadow: 0 4px 20px rgba(147, 51, 234, 0.35);
-    }
+    .btn { width: 100%; padding: 11px; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+    .btn-mic { background: linear-gradient(135deg, #2563eb, #9333ea); color: white; margin-top: 8px; }
     .btn-mic.listening { background: linear-gradient(135deg, #dc2626, #ea580c); animation: pulse 1s infinite; }
-    .cmd-row { display: flex; gap: 8px; margin-top: 8px; }
-    .btn-send { width: 82px; background: linear-gradient(135deg, #0284c7, #2563eb); color: white; }
-    .ai-log {
-      margin-top: 10px; padding: 11px 13px; border-radius: 12px; font-size: 0.88rem;
-      background: rgba(10, 15, 30, 0.85); border-right: 3px solid var(--purple); line-height: 1.55; color: #e2e8f0;
-    }
-    .scenes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-    .btn-scene {
-      background: rgba(30, 41, 59, 0.8); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1);
-      padding: 10px; font-size: 0.85rem;
-    }
-    .btn-scene:hover { border-color: var(--cyan); }
+    .cmd-row { display: flex; gap: 7px; margin-top: 8px; }
+    .btn-send { width: 78px; background: #0284c7; color: white; }
+    .ai-log { margin-top: 9px; padding: 10px; border-radius: 11px; font-size: 0.85rem; background: rgba(10, 15, 30, 0.85); border-right: 3px solid var(--purple); line-height: 1.5; }
+    .scenes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+    .btn-scene { background: rgba(30, 41, 59, 0.85); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); padding: 9px 4px; font-size: 0.78rem; }
     .btn-mode { background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); }
-    .btn-mode.active {
-      background: linear-gradient(135deg, #059669, #10b981); color: white;
-      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-    }
-    .slider-wrap { margin-top: 10px; }
-    .slider-head { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; }
+    .btn-mode.active { background: linear-gradient(135deg, #059669, #10b981); color: white; }
+    .slider-wrap { margin-top: 9px; }
+    .slider-head { display: flex; justify-content: space-between; font-size: 0.83rem; margin-bottom: 3px; }
     input[type=range] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
-    .timer-pill {
-      display: none; background: rgba(168, 85, 247, 0.2); border: 1px solid var(--purple);
-      color: #e9d5ff; padding: 4px 10px; border-radius: 99px; font-size: 0.78rem;
+    .timer-pill { display: none; background: rgba(168, 85, 247, 0.2); border: 1px solid var(--purple); color: #e9d5ff; padding: 3px 9px; border-radius: 99px; font-size: 0.75rem; }
+    canvas { width: 100%; height: 110px; background: rgba(8, 12, 24, 0.9); border-radius: 12px; margin-top: 6px; }
+    .legend { display: flex; justify-content: center; gap: 12px; font-size: 0.7rem; color: #94a3b8; margin-top: 5px; }
+    .sys-logs {
+      max-height: 95px; overflow-y: auto; font-size: 0.75rem; color: #94a3b8;
+      background: rgba(8, 12, 24, 0.85); padding: 8px; border-radius: 10px; line-height: 1.6;
     }
-    canvas { width: 100%; height: 130px; background: rgba(8, 12, 24, 0.9); border-radius: 12px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.06); }
-    .legend { display: flex; justify-content: center; gap: 14px; font-size: 0.72rem; color: #94a3b8; margin-top: 6px; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
-    @keyframes flash { 0%, 100% { background: rgba(239, 68, 68, 0.25); } 50% { background: rgba(239, 68, 68, 0.45); } }
   </style>
 </head>
 <body>
@@ -112,95 +76,100 @@
   <div class="header">
     <div class="title-wrap">
       <h1>Smart Room AI Hub</h1>
-      <span>مهندس السيطرة: أمير أحمد</span>
+      <span>نظام الغرفة الذكية | أمير أحمد</span>
     </div>
     <div class="badge" id="connBadge">جاري الاتصال...</div>
   </div>
 
-  <div class="alert-banner" id="safetyBanner">⚠️ تحذير سلامة: درجة حرارة الغرفة مرتفعة جداً!</div>
+  <div class="alert-banner" id="safetyBanner">🚨 تنبيه طوارئ: حرارة الغرفة مرتفعة جداً (جرس الإنذار يعمل)!</div>
 
-  <!-- قراءات الحساسات وتوفير الطاقة -->
   <div class="card">
     <div class="stats-grid">
-      <div class="stat-box">
-        <div class="stat-label">🌡️ الحرارة</div>
-        <div class="stat-num" id="tempDisp">--°C</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">☀️ الإضاءة</div>
-        <div class="stat-num" id="lightDisp">--%</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">🌿 توفير الطاقة</div>
-        <div class="stat-num eco" id="ecoDisp">100%</div>
-      </div>
+      <div class="stat-box"><div class="stat-label">🌡️ الحرارة</div><div class="stat-num" id="tempDisp">--°C</div></div>
+      <div class="stat-box"><div class="stat-label">💧 الرطوبة</div><div class="stat-num" id="humDisp">--%</div></div>
+      <div class="stat-box"><div class="stat-label">🔥 المحسوسة</div><div class="stat-num warn" id="hiDisp">--°C</div></div>
+      <div class="stat-box"><div class="stat-label">☀️ الإضاءة</div><div class="stat-num" id="lightDisp">--%</div></div>
+      <div class="stat-box"><div class="stat-label">⚡ الاستهلاك</div><div class="stat-num" id="wattDisp">0.0W</div></div>
+      <div class="stat-box"><div class="stat-label">🌿 التوفير</div><div class="stat-num eco" id="ecoDisp">100%</div></div>
     </div>
   </div>
 
-  <!-- المساعد الذكي الواعي بالبيئة -->
   <div class="card">
     <div class="card-title">
-      <span>🎙️ المساعد الذكي (Context-Aware AI)</span>
-      <span class="timer-pill" id="timerBadge">⏱️ متبقي: <b id="timerSec">0</b>ث</span>
+      <span>🎙️ المساعد الذكي (صوتي / نصي)</span>
+      <span class="timer-pill" id="timerBadge">⏱️ <b id="timerSec">0</b>ث</span>
     </div>
     <input type="password" id="apiKey" placeholder="أدخل Groq API Key (gsk_...)">
-    <button class="btn btn-mic" id="micBtn" onclick="startVoice()">اضغط للتحدث (مثلاً: شلون جو الغرفة؟ / وضع الدراسة)</button>
+    <button class="btn btn-mic" id="micBtn" onclick="startVoice()">اضغط للتحدث (مثلاً: شغّل ضوء المكتب / وضع السينما)</button>
     <div class="cmd-row">
-      <input type="text" id="textCmd" placeholder="اكتب أمرك أو سؤالك هنا...">
+      <input type="text" id="textCmd" placeholder="اكتب أمرك هنا...">
       <button class="btn btn-send" onclick="sendTextCmd()">إرسال</button>
     </div>
-    <div class="ai-log" id="aiLog">جاهز! يمكنك سؤالي عن حالة الغرفة أو طلب تشغيل الأجهزة بمؤقت.</div>
+    <div class="ai-log" id="aiLog">جاهز! جرب: "شلون جو الغرفة؟" أو "شغّل الإضاءة الليلية".</div>
   </div>
 
-  <!-- الأوضاع الذكية ونظام PID -->
   <div class="card">
-    <div class="card-title"><span>⚡ نظام السيطرة (PID & Scenes)</span></div>
-    <button class="btn btn-mode" id="modeBtn" onclick="toggleMode()">الوضع الحالي: مفتوح (Open-Loop يدوي)</button>
+    <div class="card-title"><span>⚡ أوضاع السيطرة والمشاهد (PID & Scenes)</span></div>
+    <button class="btn btn-mode active" id="modeBtn" onclick="toggleMode()">الوضع الحالي: مغلق (Closed-Loop PID تلقائي)</button>
     <div class="scenes-grid">
-      <button class="btn btn-scene" onclick="activateScene('study')">📚 وضع الدراسة (23°C + 100%)</button>
-      <button class="btn btn-scene" onclick="activateScene('sleep')">🌙 وضع النوم (إضاءة 0% + هادئ)</button>
+      <button class="btn btn-scene" onclick="activateScene('study')">📚 دراسة</button>
+      <button class="btn btn-scene" onclick="activateScene('cinema')">🎬 سينما</button>
+      <button class="btn btn-scene" onclick="activateScene('sleep')">🌙 نوم</button>
     </div>
-    <div id="setpointDiv" class="slider-wrap" style="display:none;">
-      <div class="slider-head"><span>🎯 الحرارة المطلوبة (Set-Point)</span><b id="spVal">26°C</b></div>
+    <div id="setpointDiv" class="slider-wrap" style="display:block;">
+      <div class="slider-head"><span>🎯 الحرارة المحسوسة المطلوبة (Set-Point)</span><b id="spVal">26°C</b></div>
       <input type="range" min="18" max="35" value="26" oninput="updateSetpoint(this.value)">
     </div>
   </div>
 
-  <!-- التحكم المباشر بالأحمال -->
   <div class="card">
-    <div class="card-title"><span>🎛️ مخرجات القدرة (PWM Actuators)</span></div>
+    <div class="card-title"><span>🎛️ التحكم المباشر بالأحمال (PWM)</span></div>
     <div class="slider-wrap">
-      <div class="slider-head"><span>💡 شدة المصباح (LED)</span><b id="ledVal">0%</b></div>
-      <input type="range" id="ledSlider" min="0" max="100" value="0" onchange="manualControl()">
+      <div class="slider-head"><span>💡 إضاءة السقف الرئيسية (D25)</span><b id="mainVal">0%</b></div>
+      <input type="range" id="mainSlider" min="0" max="100" value="0" onchange="manualControl(true)">
     </div>
     <div class="slider-wrap">
-      <div class="slider-head"><span>🌀 سرعة المروحة (DC Fan)</span><b id="fanVal">0%</b></div>
-      <input type="range" id="fanSlider" min="0" max="100" value="0" onchange="manualControl()">
+      <div class="slider-head"><span>🛋️ إضاءة المكتب الدافئة (D32)</span><b id="deskVal">0%</b></div>
+      <input type="range" id="deskSlider" min="0" max="100" value="0" onchange="manualControl(false)">
+    </div>
+    <div class="slider-wrap">
+      <div class="slider-head"><span>✨ الإضاءة الليلية (D33)</span><b id="nightVal">0%</b></div>
+      <input type="range" id="nightSlider" min="0" max="100" value="0" onchange="manualControl(false)">
+    </div>
+    <div class="slider-wrap">
+      <div class="slider-head"><span>🌀 سرعة مروحة التبريد (D26)</span><b id="fanVal">0%</b></div>
+      <input type="range" id="fanSlider" min="0" max="100" value="0" onchange="manualControl(true)">
     </div>
   </div>
 
-  <!-- الرسم البياني الحي لاستجابة PID -->
   <div class="card">
-    <div class="card-title"><span>📈 منحنى استجابة النظام (PID Response)</span></div>
-    <canvas id="pidChart" width="460" height="130"></canvas>
+    <div class="card-title"><span>📈 منحنى استجابة PID</span></div>
+    <canvas id="pidChart" width="460" height="110"></canvas>
     <div class="legend">
-      <span style="color:#fbbf24;">— الحرارة الفعلية</span>
-      <span style="color:#10b981;">-- المطلوبة (Set-Point)</span>
-      <span style="color:#38bdf8;">— سرعة المروحة %</span>
+      <span style="color:#fbbf24;">— المحسوسة</span>
+      <span style="color:#10b981;">-- المطلوبة</span>
+      <span style="color:#38bdf8;">— المروحة %</span>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>📋 سجل أحداث النظام (Live Logs)</span></div>
+    <div class="sys-logs" id="sysLogs">• بانتظار اتصال الغرفة الذكية...</div>
   </div>
 </div>
 
 <script>
-  let isAuto = false;
-  let targetTemp = 26;
-  let liveTemp = 25.0;
-  let liveLight = 50;
-  let histTemp = [], histTarget = [], histFan = [];
-  let alarmSpoken = false;
+  let isAuto = true, targetTemp = 26, liveTemp = 25.0, liveHum = 50, liveHI = 25.0, liveLight = 50;
+  let histTemp = [], histTarget = [], histFan = [], alarmSpoken = false;
 
   const TOPIC_CMD    = "ameer/smartroom/2026/cmd";
   const TOPIC_STATUS = "ameer/smartroom/2026/status";
+
+  function addLog(text) {
+    const box = document.getElementById('sysLogs');
+    const time = new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    box.innerHTML = `<div>[${time}] ${text}</div>` + box.innerHTML;
+  }
 
   const keyInput = document.getElementById('apiKey');
   keyInput.value = localStorage.getItem('groq_key') || '';
@@ -209,73 +178,77 @@
   const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
   client.on('connect', () => {
     const badge = document.getElementById('connBadge');
-    badge.innerText = "متصل بالبورد 🟢";
+    badge.innerText = "متصل بالغرفة 🟢";
     badge.classList.add('online');
     client.subscribe(TOPIC_STATUS);
+    addLog("تم الاتصال السحابي بنجاح ببورد ESP32.");
   });
 
   client.on('message', (topic, message) => {
     if (topic === TOPIC_STATUS) {
       const d = JSON.parse(message.toString());
-      liveTemp = d.temp;
-      liveLight = d.light;
-      document.getElementById('tempDisp').innerText = liveTemp.toFixed(1) + '°C';
+      liveTemp = d.temp; liveHum = d.hum; liveHI = d.hi; liveLight = d.light;
+
+      document.getElementById('tempDisp').innerText  = liveTemp.toFixed(1) + '°C';
+      document.getElementById('humDisp').innerText   = liveHum + '%';
+      document.getElementById('hiDisp').innerText    = liveHI.toFixed(1) + '°C';
       document.getElementById('lightDisp').innerText = liveLight + '%';
 
-      // حساب توفير الطاقة
-      const usedPower = (d.led + d.fan) / 2;
-      const saved = Math.max(0, Math.round(100 - usedPower));
-      document.getElementById('ecoDisp').innerText = saved + '%';
+      // حساب الاستهلاك الفعلي بالواط (بافتراض 0.1W لكل ليد و 1.5W للمروحة)
+      const watts = ((d.main + d.desk + d.night) / 100 * 0.1) + (d.fan / 100 * 1.5);
+      document.getElementById('wattDisp').innerText = watts.toFixed(2) + 'W';
 
-      // تحديث المؤقت
+      const avgLoad = (d.main + d.desk + d.night + d.fan) / 4;
+      document.getElementById('ecoDisp').innerText = Math.max(0, Math.round(100 - avgLoad)) + '%';
+
       const tBadge = document.getElementById('timerBadge');
-      if (d.rem > 0) {
-        tBadge.style.display = 'inline-block';
-        document.getElementById('timerSec').innerText = d.rem;
-      } else {
-        tBadge.style.display = 'none';
-      }
+      if (d.rem > 0) { tBadge.style.display = 'inline-block'; document.getElementById('timerSec').innerText = d.rem; }
+      else { tBadge.style.display = 'none'; }
 
-      // تنبيه الطوارئ الحراري
       const banner = document.getElementById('safetyBanner');
       if (liveTemp >= 38.0) {
         banner.style.display = 'block';
-        if (!alarmSpoken) { speakArabic("تحذير! درجة حرارة الغرفة مرتفعة جداً"); alarmSpoken = true; }
-      } else {
-        banner.style.display = 'none';
-        alarmSpoken = false;
-      }
+        if (!alarmSpoken) {
+          speakArabic("تحذير! حرارة الغرفة مرتفعة جداً، تم تشغيل جرس الإنذار");
+          addLog("🚨 تنبيه طوارئ: الحرارة تجاوزت 38°C (الجرس نشط).");
+          alarmSpoken = true;
+        }
+      } else { banner.style.display = 'none'; alarmSpoken = false; }
 
       if (d.auto !== isAuto) syncModeUI(d.auto);
-      if (isAuto) {
-        document.getElementById('ledSlider').value = d.led;
-        document.getElementById('ledVal').innerText = d.led + '%';
-        document.getElementById('fanSlider').value = d.fan;
-        document.getElementById('fanVal').innerText = d.fan + '%';
-      }
-      updateChart(liveTemp, targetTemp, d.fan);
+      if (isAuto) { setSlider('main', d.main); setSlider('fan', d.fan); }
+      updateChart(liveHI, targetTemp, d.fan);
     }
   });
 
+  function setSlider(name, val) {
+    document.getElementById(name + 'Slider').value = val;
+    document.getElementById(name + 'Val').innerText = val + '%';
+  }
+
   function sendCmd(extra = {}) {
-    const led = parseInt(document.getElementById('ledSlider').value);
-    const fan = parseInt(document.getElementById('fanSlider').value);
-    const payload = JSON.stringify({ led, fan, auto: isAuto, sp: targetTemp, ...extra });
+    const payload = JSON.stringify({
+      main:  parseInt(document.getElementById('mainSlider').value),
+      desk:  parseInt(document.getElementById('deskSlider').value),
+      night: parseInt(document.getElementById('nightSlider').value),
+      fan:   parseInt(document.getElementById('fanSlider').value),
+      auto: isAuto, sp: targetTemp, ...extra
+    });
     client.publish(TOPIC_CMD, payload);
   }
 
   function syncModeUI(autoState) {
     isAuto = autoState;
     const btn = document.getElementById('modeBtn');
-    const spDiv = document.getElementById('setpointDiv');
     btn.innerText = isAuto ? "الوضع الحالي: مغلق (Closed-Loop PID تلقائي)" : "الوضع الحالي: مفتوح (Open-Loop يدوي)";
     btn.classList.toggle('active', isAuto);
-    spDiv.style.display = isAuto ? 'block' : 'none';
+    document.getElementById('setpointDiv').style.display = isAuto ? 'block' : 'none';
   }
 
   function toggleMode() {
     syncModeUI(!isAuto);
     sendCmd();
+    addLog(isAuto ? "تفعيل وضع السيطرة المغلقة PID." : "التحويل إلى التحكم اليدوي المفتوح.");
   }
 
   function updateSetpoint(val) {
@@ -284,83 +257,64 @@
     sendCmd();
   }
 
-  function manualControl() {
-    if (isAuto) syncModeUI(false);
-    const led = document.getElementById('ledSlider').value;
-    const fan = document.getElementById('fanSlider').value;
-    document.getElementById('ledVal').innerText = led + '%';
-    document.getElementById('fanVal').innerText = fan + '%';
+  function manualControl(breakAuto) {
+    if (breakAuto && isAuto) syncModeUI(false);
+    ['main', 'desk', 'night', 'fan'].forEach(n => {
+      document.getElementById(n + 'Val').innerText = document.getElementById(n + 'Slider').value + '%';
+    });
     sendCmd();
   }
 
   function activateScene(type) {
     if (type === 'study') {
-      targetTemp = 23;
-      document.getElementById('spVal').innerText = '23°C';
-      syncModeUI(true);
-      sendCmd({ sp: 23, auto: true });
-      document.getElementById('aiLog').innerText = "📚 تم تفعيل وضع الدراسة (تبريد تلقائي عند 23°C).";
+      targetTemp = 23; document.getElementById('spVal').innerText = '23°C';
+      setSlider('desk', 100); setSlider('night', 0);
+      syncModeUI(true); sendCmd({ sp: 23, desk: 100, night: 0, auto: true });
+      document.getElementById('aiLog').innerText = "📚 تم تفعيل وضع الدراسة (ضوء المكتب 100% + تبريد 23°C).";
+      addLog("تفعيل مشهد: وضع الدراسة.");
+    } else if (type === 'cinema') {
+      syncModeUI(false);
+      setSlider('main', 0); setSlider('desk', 0); setSlider('night', 40); setSlider('fan', 40);
+      sendCmd({ main: 0, desk: 0, night: 40, fan: 40, auto: false });
+      document.getElementById('aiLog').innerText = "🎬 تم تفعيل وضع السينما (إضاءة ليلية 40% ومروحة هادئة).";
+      addLog("تفعيل مشهد: وضع السينما.");
     } else if (type === 'sleep') {
       syncModeUI(false);
-      document.getElementById('ledSlider').value = 0;
-      document.getElementById('ledVal').innerText = '0%';
-      document.getElementById('fanSlider').value = 30;
-      document.getElementById('fanVal').innerText = '30%';
-      sendCmd({ led: 0, fan: 30, auto: false });
-      document.getElementById('aiLog').innerText = "🌙 تم تفعيل وضع النوم (إطفاء الإضاءة ومروحة هادئة 30%).";
+      setSlider('main', 0); setSlider('desk', 0); setSlider('night', 20); setSlider('fan', 30);
+      sendCmd({ main: 0, desk: 0, night: 20, fan: 30, auto: false });
+      document.getElementById('aiLog').innerText = "🌙 تم تفعيل وضع النوم (إضاءة ليلية 20% ومروحة 30%).";
+      addLog("تفعيل مشهد: وضع النوم.");
     }
   }
 
   function updateChart(temp, sp, fan) {
     histTemp.push(temp); histTarget.push(sp); histFan.push(fan);
     if (histTemp.length > 30) { histTemp.shift(); histTarget.shift(); histFan.shift(); }
-    const c = document.getElementById('pidChart');
-    const ctx = c.getContext('2d');
+    const c = document.getElementById('pidChart'), ctx = c.getContext('2d');
     ctx.clearRect(0, 0, c.width, c.height);
 
-    // رسم سرعة المروحة (أزرق)
     ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.beginPath();
-    histFan.forEach((v, i) => {
-      let x = i * (c.width / 29), y = c.height - (v * 1.15) - 5;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
+    histFan.forEach((v, i) => { let x = i * (c.width / 29), y = c.height - (v * 0.95) - 5; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
     ctx.stroke();
 
-    // رسم الحرارة المطلوبة (أخضر متقطع)
     ctx.setLineDash([5, 5]); ctx.strokeStyle = '#10b981'; ctx.beginPath();
-    histTarget.forEach((v, i) => {
-      let x = i * (c.width / 29), y = c.height - ((v - 15) * 4.5);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
+    histTarget.forEach((v, i) => { let x = i * (c.width / 29), y = c.height - ((v - 15) * 3.8); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
     ctx.stroke(); ctx.setLineDash([]);
 
-    // رسم الحرارة الفعلية (ذهبي)
     ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2.5; ctx.beginPath();
-    histTemp.forEach((v, i) => {
-      let x = i * (c.width / 29), y = c.height - ((v - 15) * 4.5);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
+    histTemp.forEach((v, i) => { let x = i * (c.width / 29), y = c.height - ((v - 15) * 3.8); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
     ctx.stroke();
   }
 
   function startVoice() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) { alert("استخدم متصفح Chrome للتعرف الصوتي."); return; }
+    if (!SpeechRecognition) { alert("استخدم متصفح Chrome."); return; }
     const recognition = new SpeechRecognition();
     recognition.lang = 'ar-IQ';
     const btn = document.getElementById('micBtn');
-    btn.classList.add('listening');
-    btn.innerText = "جاري الاستماع... تحدث الآن";
-
-    recognition.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      document.getElementById('aiLog').innerText = "أنت: " + transcript;
-      processWithAI(transcript);
-    };
-    recognition.onend = () => {
-      btn.classList.remove('listening');
-      btn.innerText = "اضغط للتحدث (مثلاً: شلون جو الغرفة؟ / وضع الدراسة)";
-    };
+    btn.classList.add('listening'); btn.innerText = "جاري الاستماع...";
+    recognition.onresult = (e) => { document.getElementById('aiLog').innerText = "أنت: " + e.results[0][0].transcript; processWithAI(e.results[0][0].transcript); };
+    recognition.onend = () => { btn.classList.remove('listening'); btn.innerText = "اضغط للتحدث (مثلاً: شغّل ضوء المكتب / وضع السينما)"; };
     recognition.start();
   }
 
@@ -371,17 +325,13 @@
 
   async function processWithAI(userText) {
     const apiKey = document.getElementById('apiKey').value.replace(/\s+/g, '');
-    if (!apiKey) { document.getElementById('aiLog').innerText = "يرجى إدخال Groq API Key أولاً!"; return; }
-    document.getElementById('aiLog').innerText = "جاري تحليل بيانات الغرفة والأمر...";
+    if (!apiKey) { document.getElementById('aiLog').innerText = "يرجى إدخال Groq API Key!"; return; }
+    document.getElementById('aiLog').innerText = "جاري التنفيذ...";
 
-    const curLed = document.getElementById('ledSlider').value;
-    const curFan = document.getElementById('fanSlider').value;
-
-    const systemPrompt = `أنت مساعد ذكي لنظام تحكم بغرفة. حالة الغرفة الحية الآن:
-    - الحرارة: ${liveTemp}°C | الإضاءة المحيطة: ${liveLight}%
-    - الإضاءة الحالية: ${curLed}% | سرعة المروحة الحالية: ${curFan}% | الوضع التلقائي: ${isAuto}
-    أرجع النتيجة بصيغة JSON فقط بهذا الهيكل:
-    {"led": رقم من 0 الى 100 أو -1, "fan": رقم من 0 الى 100 أو -1, "auto": true او false او null, "timer": عدد الثواني لإطفاء الأجهزة أو -1 اذا لم يذكر وقت, "reply": "رد عربي ذكي وودود يذكر الأرقام إذا سُئلت عن حالة الغرفة"}`;
+    const systemPrompt = `أنت مساعد ذكي لغرفة فيها 3 إضاءات ومروحة. القراءات الحية:
+    الحرارة: ${liveTemp}°C | الرطوبة: ${liveHum}% | المحسوسة: ${liveHI}°C | الإضاءة المحيطة: ${liveLight}% | السقف(main): ${document.getElementById('mainSlider').value}% | المكتب(desk): ${document.getElementById('deskSlider').value}% | الليلية(night): ${document.getElementById('nightSlider').value}% | المروحة(fan): ${document.getElementById('fanSlider').value}% | التلقائي: ${isAuto}
+    أرجع JSON فقط:
+    {"main": 0-100 أو -1, "desk": 0-100 أو -1, "night": 0-100 أو -1, "fan": 0-100 أو -1, "auto": true/false/null, "timer": ثواني أو -1, "reply": "رد عربي قصير وودود"}`;
 
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -390,39 +340,32 @@
         body: JSON.stringify({
           model: 'openai/gpt-oss-20b',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
-          response_format: { type: "json_object" },
-          temperature: 0.2
+          response_format: { type: "json_object" }, temperature: 0.2
         })
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        document.getElementById('aiLog').innerText = "خطأ الخادم: " + (data.error?.message || res.status);
-        return;
-      }
+      if (!res.ok) { document.getElementById('aiLog').innerText = "خطأ: " + (data.error?.message || res.status); return; }
 
-      const rawText = data.choices[0].message.content;
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      const cmd = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);
+      const raw = data.choices[0].message.content;
+      const cmd = JSON.parse((raw.match(/\{[\s\S]*\}/) || [raw])[0]);
 
       if (cmd.auto !== null && cmd.auto !== isAuto) syncModeUI(cmd.auto);
+      if (cmd.desk >= 0)  setSlider('desk', cmd.desk);
+      if (cmd.night >= 0) setSlider('night', cmd.night);
       if (!isAuto) {
-        if (cmd.led >= 0) { document.getElementById('ledSlider').value = cmd.led; document.getElementById('ledVal').innerText = cmd.led + '%'; }
-        if (cmd.fan >= 0) { document.getElementById('fanSlider').value = cmd.fan; document.getElementById('fanVal').innerText = cmd.fan + '%'; }
+        if (cmd.main >= 0) setSlider('main', cmd.main);
+        if (cmd.fan >= 0)  setSlider('fan', cmd.fan);
       }
       sendCmd(cmd.timer > 0 ? { timer: cmd.timer } : {});
       document.getElementById('aiLog').innerText = "المساعد: " + cmd.reply;
+      addLog("أمر AI: " + userText);
       speakArabic(cmd.reply);
-    } catch (err) {
-      document.getElementById('aiLog').innerText = "خطأ تقني: " + err.message;
-    }
+    } catch (err) { document.getElementById('aiLog').innerText = "خطأ: " + err.message; }
   }
 
   function speakArabic(text) {
     if ('speechSynthesis' in window) {
-      const msg = new SpeechSynthesisUtterance(text);
-      msg.lang = 'ar-SA';
-      window.speechSynthesis.speak(msg);
+      const msg = new SpeechSynthesisUtterance(text); msg.lang = 'ar-SA'; window.speechSynthesis.speak(msg);
     }
   }
 </script>
