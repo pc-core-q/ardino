@@ -188,11 +188,11 @@ async function processWithAI(userText) {
       }
 
       // اختيار أي نموذج Llama متاح ومفعل في حسابك
-      const availableModels = (modelsData.data || []).map(m => m.id);
-      const selectedModel = availableModels.find(id => id.toLowerCase().includes('llama') && !id.includes('guard') && !id.includes('whisper')) || availableModels[0];
+    const availableModels = (modelsData.data || []).map(m => m.id);
+      const selectedModel = availableModels.find(id => id.toLowerCase().includes('llama') && !id.includes('guard') && !id.includes('whisper'));
 
       if (!selectedModel) {
-        document.getElementById('aiLog').innerText = "لا يوجد أي نموذج مفعل في حسابك. فعّل النماذج من console.groq.com/settings/limits";
+        document.getElementById('aiLog').innerText = "نماذج Llama غير مفعلة بعد. النماذج المتاحة حالياً: " + availableModels.join(', ');
         return;
       }
 
