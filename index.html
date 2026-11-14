@@ -28,7 +28,7 @@
 <body>
 <div class="container">
   <div class="card">
-    <h2>🎙️ المساعد الذكي (Llama 3.3) <span class="sim-badge">وضع المحاكاة v2</span></h2>
+    <h2>🎙️ المساعد الذكي (Groq AI) <span class="sim-badge">وضع المحاكاة v3</span></h2>
     <input type="password" id="apiKey" placeholder="أدخل Groq API Key هنا (يبدأ بـ gsk_)">
     <button class="btn btn-voice" id="micBtn" onclick="startVoice()">اضغط للتحدث (مثلاً: أشعر بالحر / الجو مظلم)</button>
     <div style="display:flex; gap:6px; margin-top:8px;">
@@ -171,36 +171,15 @@
     if (txt) { document.getElementById('aiLog').innerText = "أنت: " + txt; processWithAI(txt); }
   }
 
-async function processWithAI(userText) {
+  async function processWithAI(userText) {
     const apiKey = document.getElementById('apiKey').value.replace(/\s+/g, '');
     if (!apiKey) { document.getElementById('aiLog').innerText = "يرجى إدخال Groq API Key أولاً!"; return; }
-    document.getElementById('aiLog').innerText = "جاري البحث عن نموذج Llama متاح...";
+    document.getElementById('aiLog').innerText = "جاري التفكير وتنفيذ الأمر...";
+
+    const systemPrompt = `أنت مساعد ذكي لنظام تحكم بغرفة (مصباح LED ومروحة DC). أرجع النتيجة بصيغة JSON فقط بهذا الهيكل الدقيق بدون أي نص خارج JSON:
+    {"led": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "fan": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "auto": true او false او null, "reply": "رد عربي قصير وودود"}`;
 
     try {
-      // 1. جلب قائمة النماذج المفعلة في حسابك تلقائياً
-      const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
-        headers: { 'Authorization': `Bearer ${apiKey}` }
-      });
-      const modelsData = await modelsRes.json();
-      if (!modelsRes.ok) {
-        document.getElementById('aiLog').innerText = "خطأ في المفتاح: " + (modelsData.error?.message || modelsRes.status);
-        return;
-      }
-
-      // اختيار أي نموذج Llama متاح ومفعل في حسابك
-    const availableModels = (modelsData.data || []).map(m => m.id);
-      const selectedModel = availableModels.find(id => id.toLowerCase().includes('llama') && !id.includes('guard') && !id.includes('whisper'));
-
-      if (!selectedModel) {
-        document.getElementById('aiLog').innerText = "نماذج Llama غير مفعلة بعد. النماذج المتاحة حالياً: " + availableModels.join(', ');
-        return;
-      }
-
-      document.getElementById('aiLog').innerText = `جاري التنفيذ عبر (${selectedModel})...`;
-
-      const systemPrompt = `أنت مساعد ذكي لنظام تحكم بغرفة (مصباح LED ومروحة DC). أرجع النتيجة بصيغة JSON فقط بهذا الهيكل الدقيق:
-      {"led": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "fan": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "auto": true او false او null, "reply": "رد عربي قصير وودود"}`;
-
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -208,7 +187,7 @@ async function processWithAI(userText) {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: selectedModel,
+          model: 'openai/gpt-oss-20b',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userText }
