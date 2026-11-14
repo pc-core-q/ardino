@@ -171,15 +171,36 @@
     if (txt) { document.getElementById('aiLog').innerText = "أنت: " + txt; processWithAI(txt); }
   }
 
-  async function processWithAI(userText) {
+async function processWithAI(userText) {
     const apiKey = document.getElementById('apiKey').value.replace(/\s+/g, '');
     if (!apiKey) { document.getElementById('aiLog').innerText = "يرجى إدخال Groq API Key أولاً!"; return; }
-    document.getElementById('aiLog').innerText = "جاري التفكير عبر Llama 3.3...";
-
-    const systemPrompt = `أنت مساعد ذكي لنظام تحكم بغرفة (مصباح LED ومروحة DC). أرجع النتيجة بصيغة JSON فقط بهذا الهيكل الدقيق:
-    {"led": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "fan": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "auto": true او false او null, "reply": "رد عربي قصير وودود"}`;
+    document.getElementById('aiLog').innerText = "جاري البحث عن نموذج Llama متاح...";
 
     try {
+      // 1. جلب قائمة النماذج المفعلة في حسابك تلقائياً
+      const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+      });
+      const modelsData = await modelsRes.json();
+      if (!modelsRes.ok) {
+        document.getElementById('aiLog').innerText = "خطأ في المفتاح: " + (modelsData.error?.message || modelsRes.status);
+        return;
+      }
+
+      // اختيار أي نموذج Llama متاح ومفعل في حسابك
+      const availableModels = (modelsData.data || []).map(m => m.id);
+      const selectedModel = availableModels.find(id => id.toLowerCase().includes('llama') && !id.includes('guard') && !id.includes('whisper')) || availableModels[0];
+
+      if (!selectedModel) {
+        document.getElementById('aiLog').innerText = "لا يوجد أي نموذج مفعل في حسابك. فعّل النماذج من console.groq.com/settings/limits";
+        return;
+      }
+
+      document.getElementById('aiLog').innerText = `جاري التنفيذ عبر (${selectedModel})...`;
+
+      const systemPrompt = `أنت مساعد ذكي لنظام تحكم بغرفة (مصباح LED ومروحة DC). أرجع النتيجة بصيغة JSON فقط بهذا الهيكل الدقيق:
+      {"led": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "fan": رقم من 0 الى 100 أو -1 اذا لم يُذكر, "auto": true او false او null, "reply": "رد عربي قصير وودود"}`;
+
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -187,7 +208,7 @@
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: selectedModel,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userText }
@@ -199,8 +220,7 @@
 
       const data = await res.json();
       if (!res.ok) {
-        const errMsg = data.error ? data.error.message : ("HTTP " + res.status);
-        document.getElementById('aiLog').innerText = "رفض الخادم الطلب: " + errMsg;
+        document.getElementById('aiLog').innerText = "رفض الخادم الطلب: " + (data.error?.message || res.status);
         return;
       }
 
@@ -214,7 +234,7 @@
         if (cmd.fan >= 0) document.getElementById('fanSlider').value = cmd.fan;
         setActuators();
       }
-      document.getElementById('aiLog').innerText = "المساعد (Llama): " + cmd.reply;
+      document.getElementById('aiLog').innerText = "المساعد: " + cmd.reply;
       speakArabic(cmd.reply);
     } catch (err) {
       document.getElementById('aiLog').innerText = "خطأ تقني: " + err.message;
