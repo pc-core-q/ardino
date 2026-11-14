@@ -3,335 +3,403 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>الغرفة الذكية المتكاملة | أمير أحمد</title>
+  <title>غرفتي الذكية</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
     :root {
-      --bg: #050814; --card: rgba(17, 25, 48, 0.78); --border: rgba(56, 189, 248, 0.22);
-      --cyan: #22d3ee; --purple: #a855f7; --green: #10b981; --amber: #f59e0b; --red: #ef4444;
+      --bg: #0b1120;
+      --card: #131c31;
+      --card-light: #1b2640;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --purple: #8b5cf6;
+      --green: #10b981;
+      --red: #ef4444;
     }
     * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
     body {
-      margin: 0; padding: 14px; color: #f8fafc; min-height: 100vh;
-      background: radial-gradient(circle at 15% 15%, rgba(59,130,246,0.18), transparent 40%),
-                  radial-gradient(circle at 85% 85%, rgba(168,85,247,0.18), transparent 40%), var(--bg);
+      margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+      display: flex; justify-content: center;
     }
-    .container { max-width: 520px; margin: auto; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .title-wrap h1 {
-      margin: 0; font-size: 1.2rem;
-      background: linear-gradient(90deg, #38bdf8, #c084fc);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    .app { width: 100%; max-width: 440px; }
+
+    /* الشريط العلوي */
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
     }
-    .title-wrap span { font-size: 0.75rem; color: #94a3b8; }
-    .badge {
-      padding: 5px 11px; border-radius: 99px; font-size: 0.75rem; font-weight: bold;
-      background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.4);
+    .topbar h1 { margin: 0; font-size: 1.25rem; font-weight: 800; }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .status-dot {
+      font-size: 0.78rem; padding: 5px 12px; border-radius: 99px; font-weight: 600;
+      background: rgba(245, 158, 11, 0.15); color: #fbbf24;
     }
-    .badge.online { background: rgba(16, 185, 129, 0.15); color: var(--green); border-color: rgba(16, 185, 129, 0.4); }
-    .alert-banner {
-      display: none; background: rgba(239, 68, 68, 0.25); border: 1px solid var(--red);
-      color: #fecaca; padding: 10px; border-radius: 14px; margin-bottom: 12px; text-align: center; font-weight: bold;
+    .status-dot.online { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+    .icon-btn {
+      background: var(--card); border: 1px solid rgba(255,255,255,0.08); color: var(--text);
+      width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem;
     }
+
+    /* صندوق API Key القابل للطي */
+    .settings-drawer {
+      display: none; background: var(--card); padding: 12px; border-radius: 16px;
+      margin-bottom: 14px; border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+    .settings-drawer label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
+
+    /* تنبيه الطوارئ */
+    .alert {
+      display: none; background: var(--red); color: white; padding: 12px; border-radius: 14px;
+      text-align: center; font-weight: 700; margin-bottom: 14px; font-size: 0.9rem;
+    }
+
+    /* القراءات الأساسية */
+    .metrics {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
+    }
+    .metric-card {
+      background: var(--card); padding: 12px 8px; border-radius: 16px; text-align: center;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .metric-val { font-size: 1.3rem; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
+    .metric-lbl { font-size: 0.75rem; color: var(--muted); }
+
+    /* بطاقة المساعد الصوتي */
     .card {
-      background: var(--card); backdrop-filter: blur(14px); border: 1px solid var(--border);
-      border-radius: 18px; padding: 14px; margin-bottom: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+      background: var(--card); border-radius: 20px; padding: 16px; margin-bottom: 14px;
+      border: 1px solid rgba(255,255,255,0.05);
     }
-    .card-title { font-size: 0.92rem; font-weight: 700; color: #e2e8f0; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .stat-box { background: rgba(10, 15, 30, 0.75); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 9px 4px; text-align: center; }
-    .stat-label { font-size: 0.7rem; color: #94a3b8; margin-bottom: 3px; }
-    .stat-num { font-size: 1.15rem; font-weight: 800; color: var(--cyan); }
-    .stat-num.eco { color: var(--green); }
-    .stat-num.warn { color: var(--amber); }
-    input[type=password], input[type=text] {
-      width: 100%; padding: 9px 11px; border-radius: 11px; border: 1px solid rgba(148,163,184,0.25);
-      background: rgba(10, 15, 30, 0.85); color: white; font-size: 0.88rem; outline: none;
+    .mic-btn {
+      width: 100%; padding: 14px; border: none; border-radius: 14px; font-size: 0.95rem;
+      font-weight: 700; color: white; cursor: pointer;
+      background: linear-gradient(135deg, #2563eb, var(--purple));
+      transition: transform 0.15s;
     }
-    .btn { width: 100%; padding: 11px; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
-    .btn-mic { background: linear-gradient(135deg, #2563eb, #9333ea); color: white; margin-top: 8px; }
-    .btn-mic.listening { background: linear-gradient(135deg, #dc2626, #ea580c); animation: pulse 1s infinite; }
-    .cmd-row { display: flex; gap: 7px; margin-top: 8px; }
-    .btn-send { width: 78px; background: #0284c7; color: white; }
-    .ai-log { margin-top: 9px; padding: 10px; border-radius: 11px; font-size: 0.85rem; background: rgba(10, 15, 30, 0.85); border-right: 3px solid var(--purple); line-height: 1.5; }
-    .scenes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
-    .btn-scene { background: rgba(30, 41, 59, 0.85); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); padding: 9px 4px; font-size: 0.78rem; }
-    .btn-mode { background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); }
-    .btn-mode.active { background: linear-gradient(135deg, #059669, #10b981); color: white; }
-    .slider-wrap { margin-top: 9px; }
-    .slider-head { display: flex; justify-content: space-between; font-size: 0.83rem; margin-bottom: 3px; }
-    input[type=range] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
-    .timer-pill { display: none; background: rgba(168, 85, 247, 0.2); border: 1px solid var(--purple); color: #e9d5ff; padding: 3px 9px; border-radius: 99px; font-size: 0.75rem; }
-    canvas { width: 100%; height: 110px; background: rgba(8, 12, 24, 0.9); border-radius: 12px; margin-top: 6px; }
-    .legend { display: flex; justify-content: center; gap: 12px; font-size: 0.7rem; color: #94a3b8; margin-top: 5px; }
-    .sys-logs {
-      max-height: 95px; overflow-y: auto; font-size: 0.75rem; color: #94a3b8;
-      background: rgba(8, 12, 24, 0.85); padding: 8px; border-radius: 10px; line-height: 1.6;
+    .mic-btn:active { transform: scale(0.98); }
+    .mic-btn.listening { background: var(--red); animation: pulse 1s infinite; }
+
+    .input-group { display: flex; gap: 8px; margin-top: 10px; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+      background: var(--bg); color: white; font-size: 0.9rem; outline: none;
     }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
+    .send-btn {
+      padding: 0 16px; border: none; border-radius: 12px; background: var(--accent);
+      color: #0b1120; font-weight: 700; cursor: pointer;
+    }
+    .ai-reply {
+      margin-top: 10px; font-size: 0.88rem; color: #e2e8f0; background: var(--bg);
+      padding: 10px 12px; border-radius: 12px; line-height: 1.5;
+    }
+
+    /* الأوضاع السريعة */
+    .section-title {
+      font-size: 0.85rem; color: var(--muted); font-weight: 700; margin: 0 0 10px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .scenes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .scene-btn {
+      padding: 11px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.07);
+      background: var(--card-light); color: var(--text); font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; text-align: center;
+    }
+    .scene-btn.active { background: var(--green); color: #052e16; border-color: var(--green); }
+    .scene-btn.off-all { grid-column: span 2; background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+
+    .sp-box {
+      margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.07);
+    }
+
+    /* بطاقات الأجهزة */
+    .device-row {
+      background: var(--card-light); padding: 12px; border-radius: 14px; margin-bottom: 10px;
+    }
+    .device-row:last-child { margin-bottom: 0; }
+    .device-top {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+    }
+    .device-name { font-size: 0.92rem; font-weight: 600; }
+    .toggle-pill {
+      padding: 4px 12px; border-radius: 99px; border: none; font-size: 0.8rem;
+      font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.1); color: var(--muted);
+    }
+    .toggle-pill.on { background: var(--accent); color: #0b1120; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; margin: 0; }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
   </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div class="title-wrap">
-      <h1>Smart Room AI Hub</h1>
-      <span>نظام الغرفة الذكية | أمير أحمد</span>
-    </div>
-    <div class="badge" id="connBadge">جاري الاتصال...</div>
-  </div>
+<div class="app">
 
-  <div class="alert-banner" id="safetyBanner">🚨 تنبيه طوارئ: حرارة الغرفة مرتفعة جداً (جرس الإنذار يعمل)!</div>
-
-  <div class="card">
-    <div class="stats-grid">
-      <div class="stat-box"><div class="stat-label">🌡️ الحرارة</div><div class="stat-num" id="tempDisp">--°C</div></div>
-      <div class="stat-box"><div class="stat-label">💧 الرطوبة</div><div class="stat-num" id="humDisp">--%</div></div>
-      <div class="stat-box"><div class="stat-label">🔥 المحسوسة</div><div class="stat-num warn" id="hiDisp">--°C</div></div>
-      <div class="stat-box"><div class="stat-label">☀️ الإضاءة</div><div class="stat-num" id="lightDisp">--%</div></div>
-      <div class="stat-box"><div class="stat-label">⚡ الاستهلاك</div><div class="stat-num" id="wattDisp">0.0W</div></div>
-      <div class="stat-box"><div class="stat-label">🌿 التوفير</div><div class="stat-num eco" id="ecoDisp">100%</div></div>
+  <!-- الشريط العلوي -->
+  <div class="topbar">
+    <h1>غرفتي الذكية</h1>
+    <div class="top-actions">
+      <div class="status-dot" id="connBadge">جاري الاتصال...</div>
+      <button class="icon-btn" onclick="toggleSettings()" title="إعدادات المفتاح">⚙️</button>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">
-      <span>🎙️ المساعد الذكي (صوتي / نصي)</span>
-      <span class="timer-pill" id="timerBadge">⏱️ <b id="timerSec">0</b>ث</span>
-    </div>
-    <input type="password" id="apiKey" placeholder="أدخل Groq API Key (gsk_...)">
-    <button class="btn btn-mic" id="micBtn" onclick="startVoice()">اضغط للتحدث (مثلاً: شغّل ضوء المكتب / وضع السينما)</button>
-    <div class="cmd-row">
-      <input type="text" id="textCmd" placeholder="اكتب أمرك هنا...">
-      <button class="btn btn-send" onclick="sendTextCmd()">إرسال</button>
-    </div>
-    <div class="ai-log" id="aiLog">جاهز! جرب: "شلون جو الغرفة؟" أو "شغّل الإضاءة الليلية".</div>
+  <!-- إعداد مفتاح الذكاء الاصطناعي -->
+  <div class="settings-drawer" id="settingsBox">
+    <label>مفتاح Groq API (يُحفظ تلقائياً في هاتفك):</label>
+    <input type="password" id="apiKey" placeholder="الصق المفتاح هنا (gsk_...)">
   </div>
 
-  <div class="card">
-    <div class="card-title"><span>⚡ أوضاع السيطرة والمشاهد (PID & Scenes)</span></div>
-    <button class="btn btn-mode active" id="modeBtn" onclick="toggleMode()">الوضع الحالي: مغلق (Closed-Loop PID تلقائي)</button>
-    <div class="scenes-grid">
-      <button class="btn btn-scene" onclick="activateScene('study')">📚 دراسة</button>
-      <button class="btn btn-scene" onclick="activateScene('cinema')">🎬 سينما</button>
-      <button class="btn btn-scene" onclick="activateScene('sleep')">🌙 نوم</button>
+  <!-- تنبيه الحرارة العالية -->
+  <div class="alert" id="safetyBanner">🚨 تنبيه: حرارة الغرفة مرتفعة جداً!</div>
+
+  <!-- القراءات الحية -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-val" id="tempDisp">--°</div>
+      <div class="metric-lbl">🌡️ الحرارة</div>
     </div>
-    <div id="setpointDiv" class="slider-wrap" style="display:block;">
-      <div class="slider-head"><span>🎯 الحرارة المحسوسة المطلوبة (Set-Point)</span><b id="spVal">26°C</b></div>
+    <div class="metric-card">
+      <div class="metric-val" id="humDisp">--%</div>
+      <div class="metric-lbl">💧 الرطوبة</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val" id="lightDisp">--%</div>
+      <div class="metric-lbl">☀️ الإضاءة</div>
+    </div>
+  </div>
+
+  <!-- المساعد الصوتي -->
+  <div class="card">
+    <button class="mic-btn" id="micBtn" onclick="startVoice()">🎙️ اضغط للتحدث مع الغرفة</button>
+    <div class="input-group">
+      <input type="text" id="textCmd" placeholder="أو اكتب طلبك هنا..." onkeydown="if(event.key==='Enter') sendTextCmd()">
+      <button class="send-btn" onclick="sendTextCmd()">إرسال</button>
+    </div>
+    <div class="ai-reply" id="aiLog">أهلاً! قل مثلاً: "شغّل ضوء المكتب" أو "فعّل وضع النوم".</div>
+  </div>
+
+  <!-- الأوضاع الذكية -->
+  <div class="card">
+    <div class="section-title">
+      <span>⚡ الأوضاع السريعة</span>
+      <span id="timerText" style="color:#c084fc;"></span>
+    </div>
+    <div class="scenes">
+      <button class="scene-btn active" id="autoBtn" onclick="toggleAuto()">🤖 تلقائي ذكي</button>
+      <button class="scene-btn" onclick="setScene('study')">📚 وضع الدراسة</button>
+      <button class="scene-btn" onclick="setScene('cinema')">🎬 وضع السينما</button>
+      <button class="scene-btn" onclick="setScene('sleep')">🌙 وضع النوم</button>
+      <button class="scene-btn off-all" onclick="setScene('off')">🛑 إطفاء كل الأجهزة</button>
+    </div>
+
+    <div class="sp-box" id="spBox">
+      <div class="section-title" style="margin-bottom:4px;">
+        <span>🎯 درجة التبريد المطلوبة</span>
+        <b id="spVal" style="color:var(--accent);">26°C</b>
+      </div>
       <input type="range" min="18" max="35" value="26" oninput="updateSetpoint(this.value)">
     </div>
   </div>
 
+  <!-- التحكم المباشر بالأجهزة -->
   <div class="card">
-    <div class="card-title"><span>🎛️ التحكم المباشر بالأحمال (PWM)</span></div>
-    <div class="slider-wrap">
-      <div class="slider-head"><span>💡 إضاءة السقف الرئيسية (D25)</span><b id="mainVal">0%</b></div>
-      <input type="range" id="mainSlider" min="0" max="100" value="0" onchange="manualControl(true)">
+    <div class="section-title"><span>🎛️ التحكم بالأجهزة</span></div>
+
+    <div class="device-row">
+      <div class="device-top">
+        <span class="device-name">💡 إضاءة السقف</span>
+        <button class="toggle-pill" id="mainPill" onclick="quickToggle('main')">0%</button>
+      </div>
+      <input type="range" id="mainSlider" min="0" max="100" value="0" oninput="onSlider('main', true)">
     </div>
-    <div class="slider-wrap">
-      <div class="slider-head"><span>🛋️ إضاءة المكتب الدافئة (D32)</span><b id="deskVal">0%</b></div>
-      <input type="range" id="deskSlider" min="0" max="100" value="0" onchange="manualControl(false)">
+
+    <div class="device-row">
+      <div class="device-top">
+        <span class="device-name">🛋️ إضاءة المكتب</span>
+        <button class="toggle-pill" id="deskPill" onclick="quickToggle('desk')">0%</button>
+      </div>
+      <input type="range" id="deskSlider" min="0" max="100" value="0" oninput="onSlider('desk', false)">
     </div>
-    <div class="slider-wrap">
-      <div class="slider-head"><span>✨ الإضاءة الليلية (D33)</span><b id="nightVal">0%</b></div>
-      <input type="range" id="nightSlider" min="0" max="100" value="0" onchange="manualControl(false)">
+
+    <div class="device-row">
+      <div class="device-top">
+        <span class="device-name">✨ الإضاءة الليلية</span>
+        <button class="toggle-pill" id="nightPill" onclick="quickToggle('night')">0%</button>
+      </div>
+      <input type="range" id="nightSlider" min="0" max="100" value="0" oninput="onSlider('night', false)">
     </div>
-    <div class="slider-wrap">
-      <div class="slider-head"><span>🌀 سرعة مروحة التبريد (D26)</span><b id="fanVal">0%</b></div>
-      <input type="range" id="fanSlider" min="0" max="100" value="0" onchange="manualControl(true)">
+
+    <div class="device-row">
+      <div class="device-top">
+        <span class="device-name">🌀 مروحة التبريد</span>
+        <button class="toggle-pill" id="fanPill" onclick="quickToggle('fan')">0%</button>
+      </div>
+      <input type="range" id="fanSlider" min="0" max="100" value="0" oninput="onSlider('fan', true)">
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title"><span>📈 منحنى استجابة PID</span></div>
-    <canvas id="pidChart" width="460" height="110"></canvas>
-    <div class="legend">
-      <span style="color:#fbbf24;">— المحسوسة</span>
-      <span style="color:#10b981;">-- المطلوبة</span>
-      <span style="color:#38bdf8;">— المروحة %</span>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title"><span>📋 سجل أحداث النظام (Live Logs)</span></div>
-    <div class="sys-logs" id="sysLogs">• بانتظار اتصال الغرفة الذكية...</div>
-  </div>
 </div>
 
 <script>
-  let isAuto = true, targetTemp = 26, liveTemp = 25.0, liveHum = 50, liveHI = 25.0, liveLight = 50;
-  let histTemp = [], histTarget = [], histFan = [], alarmSpoken = false;
+  let isAuto = true, targetTemp = 26, liveTemp = 25, liveHum = 50, liveLight = 50;
+  let alarmSpoken = false;
 
   const TOPIC_CMD    = "ameer/smartroom/2026/cmd";
   const TOPIC_STATUS = "ameer/smartroom/2026/status";
 
-  function addLog(text) {
-    const box = document.getElementById('sysLogs');
-    const time = new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    box.innerHTML = `<div>[${time}] ${text}</div>` + box.innerHTML;
-  }
-
+  // حفظ واسترجاع المفتاح
   const keyInput = document.getElementById('apiKey');
   keyInput.value = localStorage.getItem('groq_key') || '';
-  keyInput.addEventListener('input', () => localStorage.setItem('groq_key', keyInput.value.replace(/\s+/g, '')));
+  if (!keyInput.value) document.getElementById('settingsBox').style.display = 'block';
+  keyInput.addEventListener('input', () => localStorage.setItem('groq_key', keyInput.value.trim()));
 
+  function toggleSettings() {
+    const box = document.getElementById('settingsBox');
+    box.style.display = box.style.display === 'block' ? 'none' : 'block';
+  }
+
+  // الاتصال السحابي MQTT
   const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
   client.on('connect', () => {
     const badge = document.getElementById('connBadge');
-    badge.innerText = "متصل بالغرفة 🟢";
+    badge.innerText = "متصل 🟢";
     badge.classList.add('online');
     client.subscribe(TOPIC_STATUS);
-    addLog("تم الاتصال السحابي بنجاح ببورد ESP32.");
   });
 
   client.on('message', (topic, message) => {
-    if (topic === TOPIC_STATUS) {
-      const d = JSON.parse(message.toString());
-      liveTemp = d.temp; liveHum = d.hum; liveHI = d.hi; liveLight = d.light;
+    if (topic !== TOPIC_STATUS) return;
+    const d = JSON.parse(message.toString());
+    liveTemp = d.temp; liveHum = d.hum; liveLight = d.light;
 
-      document.getElementById('tempDisp').innerText  = liveTemp.toFixed(1) + '°C';
-      document.getElementById('humDisp').innerText   = liveHum + '%';
-      document.getElementById('hiDisp').innerText    = liveHI.toFixed(1) + '°C';
-      document.getElementById('lightDisp').innerText = liveLight + '%';
+    document.getElementById('tempDisp').innerText  = liveTemp.toFixed(1) + '°';
+    document.getElementById('humDisp').innerText   = liveHum + '%';
+    document.getElementById('lightDisp').innerText = liveLight + '%';
 
-      // حساب الاستهلاك الفعلي بالواط (بافتراض 0.1W لكل ليد و 1.5W للمروحة)
-      const watts = ((d.main + d.desk + d.night) / 100 * 0.1) + (d.fan / 100 * 1.5);
-      document.getElementById('wattDisp').innerText = watts.toFixed(2) + 'W';
+    document.getElementById('timerText').innerText = d.rem > 0 ? `⏱️ ${d.rem}ث` : '';
 
-      const avgLoad = (d.main + d.desk + d.night + d.fan) / 4;
-      document.getElementById('ecoDisp').innerText = Math.max(0, Math.round(100 - avgLoad)) + '%';
+    const banner = document.getElementById('safetyBanner');
+    if (liveTemp >= 38.0) {
+      banner.style.display = 'block';
+      if (!alarmSpoken) { speak("تحذير، حرارة الغرفة مرتفعة"); alarmSpoken = true; }
+    } else {
+      banner.style.display = 'none'; alarmSpoken = false;
+    }
 
-      const tBadge = document.getElementById('timerBadge');
-      if (d.rem > 0) { tBadge.style.display = 'inline-block'; document.getElementById('timerSec').innerText = d.rem; }
-      else { tBadge.style.display = 'none'; }
-
-      const banner = document.getElementById('safetyBanner');
-      if (liveTemp >= 38.0) {
-        banner.style.display = 'block';
-        if (!alarmSpoken) {
-          speakArabic("تحذير! حرارة الغرفة مرتفعة جداً، تم تشغيل جرس الإنذار");
-          addLog("🚨 تنبيه طوارئ: الحرارة تجاوزت 38°C (الجرس نشط).");
-          alarmSpoken = true;
-        }
-      } else { banner.style.display = 'none'; alarmSpoken = false; }
-
-      if (d.auto !== isAuto) syncModeUI(d.auto);
-      if (isAuto) { setSlider('main', d.main); setSlider('fan', d.fan); }
-      updateChart(liveHI, targetTemp, d.fan);
+    if (d.auto !== isAuto) updateAutoUI(d.auto);
+    if (isAuto) {
+      setControl('main', d.main);
+      setControl('fan', d.fan);
     }
   });
 
-  function setSlider(name, val) {
+  function setControl(name, val) {
     document.getElementById(name + 'Slider').value = val;
-    document.getElementById(name + 'Val').innerText = val + '%';
+    const pill = document.getElementById(name + 'Pill');
+    pill.innerText = val > 0 ? val + '%' : 'مطفأ';
+    pill.classList.toggle('on', val > 0);
   }
 
   function sendCmd(extra = {}) {
-    const payload = JSON.stringify({
-      main:  parseInt(document.getElementById('mainSlider').value),
-      desk:  parseInt(document.getElementById('deskSlider').value),
-      night: parseInt(document.getElementById('nightSlider').value),
-      fan:   parseInt(document.getElementById('fanSlider').value),
+    client.publish(TOPIC_CMD, JSON.stringify({
+      main:  +document.getElementById('mainSlider').value,
+      desk:  +document.getElementById('deskSlider').value,
+      night: +document.getElementById('nightSlider').value,
+      fan:   +document.getElementById('fanSlider').value,
       auto: isAuto, sp: targetTemp, ...extra
-    });
-    client.publish(TOPIC_CMD, payload);
+    }));
   }
 
-  function syncModeUI(autoState) {
-    isAuto = autoState;
-    const btn = document.getElementById('modeBtn');
-    btn.innerText = isAuto ? "الوضع الحالي: مغلق (Closed-Loop PID تلقائي)" : "الوضع الحالي: مفتوح (Open-Loop يدوي)";
-    btn.classList.toggle('active', isAuto);
-    document.getElementById('setpointDiv').style.display = isAuto ? 'block' : 'none';
+  function updateAutoUI(state) {
+    isAuto = state;
+    document.getElementById('autoBtn').classList.toggle('active', isAuto);
+    document.getElementById('spBox').style.display = isAuto ? 'block' : 'none';
   }
 
-  function toggleMode() {
-    syncModeUI(!isAuto);
+  function toggleAuto() {
+    updateAutoUI(!isAuto);
     sendCmd();
-    addLog(isAuto ? "تفعيل وضع السيطرة المغلقة PID." : "التحويل إلى التحكم اليدوي المفتوح.");
   }
 
   function updateSetpoint(val) {
-    targetTemp = parseInt(val);
+    targetTemp = +val;
     document.getElementById('spVal').innerText = val + '°C';
     sendCmd();
   }
 
-  function manualControl(breakAuto) {
-    if (breakAuto && isAuto) syncModeUI(false);
-    ['main', 'desk', 'night', 'fan'].forEach(n => {
-      document.getElementById(n + 'Val').innerText = document.getElementById(n + 'Slider').value + '%';
-    });
+  function onSlider(name, breaksAuto) {
+    if (breaksAuto && isAuto) updateAutoUI(false);
+    setControl(name, +document.getElementById(name + 'Slider').value);
     sendCmd();
   }
 
-  function activateScene(type) {
-    if (type === 'study') {
+  function quickToggle(name) {
+    const current = +document.getElementById(name + 'Slider').value;
+    const next = current > 0 ? 0 : 100;
+    if ((name === 'main' || name === 'fan') && isAuto) updateAutoUI(false);
+    setControl(name, next);
+    sendCmd();
+  }
+
+  function setScene(mode) {
+    if (mode === 'study') {
       targetTemp = 23; document.getElementById('spVal').innerText = '23°C';
-      setSlider('desk', 100); setSlider('night', 0);
-      syncModeUI(true); sendCmd({ sp: 23, desk: 100, night: 0, auto: true });
-      document.getElementById('aiLog').innerText = "📚 تم تفعيل وضع الدراسة (ضوء المكتب 100% + تبريد 23°C).";
-      addLog("تفعيل مشهد: وضع الدراسة.");
-    } else if (type === 'cinema') {
-      syncModeUI(false);
-      setSlider('main', 0); setSlider('desk', 0); setSlider('night', 40); setSlider('fan', 40);
-      sendCmd({ main: 0, desk: 0, night: 40, fan: 40, auto: false });
-      document.getElementById('aiLog').innerText = "🎬 تم تفعيل وضع السينما (إضاءة ليلية 40% ومروحة هادئة).";
-      addLog("تفعيل مشهد: وضع السينما.");
-    } else if (type === 'sleep') {
-      syncModeUI(false);
-      setSlider('main', 0); setSlider('desk', 0); setSlider('night', 20); setSlider('fan', 30);
-      sendCmd({ main: 0, desk: 0, night: 20, fan: 30, auto: false });
-      document.getElementById('aiLog').innerText = "🌙 تم تفعيل وضع النوم (إضاءة ليلية 20% ومروحة 30%).";
-      addLog("تفعيل مشهد: وضع النوم.");
+      setControl('desk', 100); setControl('night', 0);
+      updateAutoUI(true); sendCmd({ sp: 23, desk: 100, night: 0, auto: true });
+      document.getElementById('aiLog').innerText = "📚 تم تفعيل وضع الدراسة.";
+    } else if (mode === 'cinema') {
+      updateAutoUI(false);
+      setControl('main', 0); setControl('desk', 0); setControl('night', 35); setControl('fan', 40);
+      sendCmd({ main: 0, desk: 0, night: 35, fan: 40, auto: false });
+      document.getElementById('aiLog').innerText = "🎬 تم تفعيل وضع السينما.";
+    } else if (mode === 'sleep') {
+      updateAutoUI(false);
+      setControl('main', 0); setControl('desk', 0); setControl('night', 15); setControl('fan', 30);
+      sendCmd({ main: 0, desk: 0, night: 15, fan: 30, auto: false });
+      document.getElementById('aiLog').innerText = "🌙 تصبح على خير! تم تفعيل وضع النوم.";
+    } else if (mode === 'off') {
+      updateAutoUI(false);
+      ['main', 'desk', 'night', 'fan'].forEach(n => setControl(n, 0));
+      sendCmd({ main: 0, desk: 0, night: 0, fan: 0, auto: false });
+      document.getElementById('aiLog').innerText = "🛑 تم إطفاء جميع أجهزة الغرفة.";
     }
   }
 
-  function updateChart(temp, sp, fan) {
-    histTemp.push(temp); histTarget.push(sp); histFan.push(fan);
-    if (histTemp.length > 30) { histTemp.shift(); histTarget.shift(); histFan.shift(); }
-    const c = document.getElementById('pidChart'), ctx = c.getContext('2d');
-    ctx.clearRect(0, 0, c.width, c.height);
-
-    ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.beginPath();
-    histFan.forEach((v, i) => { let x = i * (c.width / 29), y = c.height - (v * 0.95) - 5; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
-    ctx.stroke();
-
-    ctx.setLineDash([5, 5]); ctx.strokeStyle = '#10b981'; ctx.beginPath();
-    histTarget.forEach((v, i) => { let x = i * (c.width / 29), y = c.height - ((v - 15) * 3.8); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
-    ctx.stroke(); ctx.setLineDash([]);
-
-    ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2.5; ctx.beginPath();
-    histTemp.forEach((v, i) => { let x = i * (c.width / 29), y = c.height - ((v - 15) * 3.8); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
-    ctx.stroke();
-  }
-
+  // المساعد الصوتي والنصي
   function startVoice() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) { alert("استخدم متصفح Chrome."); return; }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-IQ';
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return alert("يرجى استخدام متصفح Chrome للصوت.");
+    const rec = new SR();
+    rec.lang = 'ar-IQ';
     const btn = document.getElementById('micBtn');
-    btn.classList.add('listening'); btn.innerText = "جاري الاستماع...";
-    recognition.onresult = (e) => { document.getElementById('aiLog').innerText = "أنت: " + e.results[0][0].transcript; processWithAI(e.results[0][0].transcript); };
-    recognition.onend = () => { btn.classList.remove('listening'); btn.innerText = "اضغط للتحدث (مثلاً: شغّل ضوء المكتب / وضع السينما)"; };
-    recognition.start();
+    btn.classList.add('listening'); btn.innerText = "👂 أستمع إليك...";
+    rec.onresult = (e) => {
+      const text = e.results[0][0].transcript;
+      document.getElementById('aiLog').innerText = "أنت: " + text;
+      askAI(text);
+    };
+    rec.onend = () => { btn.classList.remove('listening'); btn.innerText = "🎙️ اضغط للتحدث مع الغرفة"; };
+    rec.start();
   }
 
   function sendTextCmd() {
-    const txt = document.getElementById('textCmd').value.trim();
-    if (txt) { document.getElementById('aiLog').innerText = "أنت: " + txt; processWithAI(txt); }
+    const input = document.getElementById('textCmd');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    document.getElementById('aiLog').innerText = "أنت: " + text;
+    askAI(text);
   }
 
-  async function processWithAI(userText) {
-    const apiKey = document.getElementById('apiKey').value.replace(/\s+/g, '');
-    if (!apiKey) { document.getElementById('aiLog').innerText = "يرجى إدخال Groq API Key!"; return; }
-    document.getElementById('aiLog').innerText = "جاري التنفيذ...";
+  async function askAI(userText) {
+    const apiKey = keyInput.value.trim();
+    if (!apiKey) {
+      document.getElementById('settingsBox').style.display = 'block';
+      document.getElementById('aiLog').innerText = "⚠️ أدخل مفتاح Groq API في الأعلى أولاً.";
+      return;
+    }
+    document.getElementById('aiLog').innerText = "⏳ جاري التنفيذ...";
 
-    const systemPrompt = `أنت مساعد ذكي لغرفة فيها 3 إضاءات ومروحة. القراءات الحية:
-    الحرارة: ${liveTemp}°C | الرطوبة: ${liveHum}% | المحسوسة: ${liveHI}°C | الإضاءة المحيطة: ${liveLight}% | السقف(main): ${document.getElementById('mainSlider').value}% | المكتب(desk): ${document.getElementById('deskSlider').value}% | الليلية(night): ${document.getElementById('nightSlider').value}% | المروحة(fan): ${document.getElementById('fanSlider').value}% | التلقائي: ${isAuto}
-    أرجع JSON فقط:
-    {"main": 0-100 أو -1, "desk": 0-100 أو -1, "night": 0-100 أو -1, "fan": 0-100 أو -1, "auto": true/false/null, "timer": ثواني أو -1, "reply": "رد عربي قصير وودود"}`;
+    const prompt = `أنت مساعد غرفة ذكية. الحالة: حرارة ${liveTemp}°C، رطوبة ${liveHum}%، إضاءة ${liveLight}%، السقف(main): ${document.getElementById('mainSlider').value}%، المكتب(desk): ${document.getElementById('deskSlider').value}%، الليلية(night): ${document.getElementById('nightSlider').value}%، المروحة(fan): ${document.getElementById('fanSlider').value}%، التلقائي: ${isAuto}.
+    أرجع JSON فقط: {"main":0-100 أو -1,"desk":0-100 أو -1,"night":0-100 أو -1,"fan":0-100 أو -1,"auto":true/false/null,"timer":ثواني أو -1,"reply":"رد عربي قصير"}`;
 
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -339,33 +407,34 @@
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: 'openai/gpt-oss-20b',
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
+          messages: [{ role: 'system', content: prompt }, { role: 'user', content: userText }],
           response_format: { type: "json_object" }, temperature: 0.2
         })
       });
       const data = await res.json();
-      if (!res.ok) { document.getElementById('aiLog').innerText = "خطأ: " + (data.error?.message || res.status); return; }
+      if (!res.ok) throw new Error(data.error?.message || res.status);
 
-      const raw = data.choices[0].message.content;
-      const cmd = JSON.parse((raw.match(/\{[\s\S]*\}/) || [raw])[0]);
-
-      if (cmd.auto !== null && cmd.auto !== isAuto) syncModeUI(cmd.auto);
-      if (cmd.desk >= 0)  setSlider('desk', cmd.desk);
-      if (cmd.night >= 0) setSlider('night', cmd.night);
+      const cmd = JSON.parse(data.choices[0].message.content);
+      if (cmd.auto !== null && cmd.auto !== isAuto) updateAutoUI(cmd.auto);
+      if (cmd.desk >= 0)  setControl('desk', cmd.desk);
+      if (cmd.night >= 0) setControl('night', cmd.night);
       if (!isAuto) {
-        if (cmd.main >= 0) setSlider('main', cmd.main);
-        if (cmd.fan >= 0)  setSlider('fan', cmd.fan);
+        if (cmd.main >= 0) setControl('main', cmd.main);
+        if (cmd.fan >= 0)  setControl('fan', cmd.fan);
       }
       sendCmd(cmd.timer > 0 ? { timer: cmd.timer } : {});
-      document.getElementById('aiLog').innerText = "المساعد: " + cmd.reply;
-      addLog("أمر AI: " + userText);
-      speakArabic(cmd.reply);
-    } catch (err) { document.getElementById('aiLog').innerText = "خطأ: " + err.message; }
+      document.getElementById('aiLog').innerText = "🤖 " + cmd.reply;
+      speak(cmd.reply);
+    } catch (e) {
+      document.getElementById('aiLog').innerText = "❌ خطأ: " + e.message;
+    }
   }
 
-  function speakArabic(text) {
+  function speak(text) {
     if ('speechSynthesis' in window) {
-      const msg = new SpeechSynthesisUtterance(text); msg.lang = 'ar-SA'; window.speechSynthesis.speak(msg);
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ar-SA';
+      window.speechSynthesis.speak(u);
     }
   }
 </script>
