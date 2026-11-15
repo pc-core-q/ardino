@@ -1,442 +1,430 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>غرفتي الذكية</title>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <style>
-    :root {
-      --bg: #0b1120;
-      --card: #131c31;
-      --card-light: #1b2640;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --purple: #8b5cf6;
-      --green: #10b981;
-      --red: #ef4444;
-    }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
-    body {
-      margin: 0; padding: 16px; background: var(--bg); color: var(--text);
-      display: flex; justify-content: center;
-    }
-    .app { width: 100%; max-width: 440px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0e1417">
+<title>غرفتي الذكية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<style>
+:root{
+  --bg:#0e1417; --surface:#151e22; --raised:#1c2830; --line:#26343c;
+  --text:#eaf2f0; --muted:#8aa0a6;
+  --amber:#ffc66b; --air:#6fd3e6; --ok:#5fd6a0; --alert:#ff6b5e;
+  --glow:0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  margin:0;min-height:100vh;background:var(--bg);color:var(--text);
+  font-family:'IBM Plex Sans Arabic',system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(28px + env(safe-area-inset-bottom,0px));
+  display:flex;justify-content:center;line-height:1.5;
+}
+.app{width:100%;max-width:460px;display:flex;flex-direction:column;gap:14px}
+button,input{font-family:inherit}
+button{cursor:pointer;color:inherit}
+:focus-visible{outline:2px solid var(--air);outline-offset:2px}
 
-    /* الشريط العلوي */
-    .topbar {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
-    }
-    .topbar h1 { margin: 0; font-size: 1.25rem; font-weight: 800; }
-    .top-actions { display: flex; align-items: center; gap: 8px; }
-    .status-dot {
-      font-size: 0.78rem; padding: 5px 12px; border-radius: 99px; font-weight: 600;
-      background: rgba(245, 158, 11, 0.15); color: #fbbf24;
-    }
-    .status-dot.online { background: rgba(16, 185, 129, 0.15); color: var(--green); }
-    .icon-btn {
-      background: var(--card); border: 1px solid rgba(255,255,255,0.08); color: var(--text);
-      width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem;
-    }
+/* الشريط العلوي */
+.topbar{display:flex;align-items:center;justify-content:space-between}
+.topbar h1{margin:0;font-size:1.3rem;font-weight:700}
+.top-actions{display:flex;align-items:center;gap:8px}
+.badge{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;padding:6px 12px;border-radius:99px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.badge i{width:8px;height:8px;border-radius:50%;background:#e0a93b}
+.badge.online{color:var(--ok)} .badge.online i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.badge.offline{color:var(--alert)} .badge.offline i{background:var(--alert)}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:1rem}
 
-    /* صندوق API Key القابل للطي */
-    .settings-drawer {
-      display: none; background: var(--card); padding: 12px; border-radius: 16px;
-      margin-bottom: 14px; border: 1px solid rgba(56, 189, 248, 0.25);
-    }
-    .settings-drawer label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
+.drawer{display:none;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px}
+.drawer.open{display:block}
+.drawer label{display:block;font-size:.82rem;color:var(--muted);margin-bottom:8px}
+input[type=text],input[type=password]{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:.95rem;outline:none}
+input[type=text]:focus,input[type=password]:focus{border-color:var(--air)}
 
-    /* تنبيه الطوارئ */
-    .alert {
-      display: none; background: var(--red); color: white; padding: 12px; border-radius: 14px;
-      text-align: center; font-weight: 700; margin-bottom: 14px; font-size: 0.9rem;
-    }
+.alert{display:none;background:var(--alert);color:#2a0905;padding:12px 14px;border-radius:16px;font-weight:700;font-size:.92rem;text-align:center}
+.alert.show{display:block}
 
-    /* القراءات الأساسية */
-    .metrics {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
-    }
-    .metric-card {
-      background: var(--card); padding: 12px 8px; border-radius: 16px; text-align: center;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    .metric-val { font-size: 1.3rem; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
-    .metric-lbl { font-size: 0.75rem; color: var(--muted); }
+/* بطاقة الغرفة */
+.hero{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:20px 18px;display:flex;align-items:center;gap:18px}
+.hero::before{content:"";position:absolute;inset:-40% -20% auto auto;width:340px;height:340px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,198,107,.55),rgba(255,198,107,0) 65%);opacity:calc(var(--glow)*.9);transition:opacity .5s}
+.gauge{position:relative;width:132px;height:132px;flex:none}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge circle{fill:none;stroke-width:9;stroke-linecap:round}
+.gauge .track{stroke:var(--raised)}
+.gauge .fill{stroke:var(--air);stroke-dasharray:326.7;stroke-dashoffset:326.7;transition:stroke-dashoffset .6s,stroke .4s}
+.gauge .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge b{font-size:2rem;font-weight:700;line-height:1}
+.gauge span{font-size:.75rem;color:var(--muted);margin-top:4px}
+.stats{position:relative;flex:1;display:flex;flex-direction:column;gap:10px}
+.stat{display:flex;align-items:center;gap:10px;background:rgba(14,20,23,.55);border-radius:14px;padding:10px 12px}
+.stat em{font-style:normal;font-size:1.2rem}
+.stat div{display:flex;flex-direction:column}
+.stat b{font-size:1.05rem;font-weight:600}
+.stat small{font-size:.72rem;color:var(--muted)}
 
-    /* بطاقة المساعد الصوتي */
-    .card {
-      background: var(--card); border-radius: 20px; padding: 16px; margin-bottom: 14px;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    .mic-btn {
-      width: 100%; padding: 14px; border: none; border-radius: 14px; font-size: 0.95rem;
-      font-weight: 700; color: white; cursor: pointer;
-      background: linear-gradient(135deg, #2563eb, var(--purple));
-      transition: transform 0.15s;
-    }
-    .mic-btn:active { transform: scale(0.98); }
-    .mic-btn.listening { background: var(--red); animation: pulse 1s infinite; }
+.card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px}
+.card h2{margin:0 0 12px;font-size:.95rem;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.timer{color:var(--amber);font-weight:600}
 
-    .input-group { display: flex; gap: 8px; margin-top: 10px; }
-    input[type="text"], input[type="password"] {
-      width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
-      background: var(--bg); color: white; font-size: 0.9rem; outline: none;
-    }
-    .send-btn {
-      padding: 0 16px; border: none; border-radius: 12px; background: var(--accent);
-      color: #0b1120; font-weight: 700; cursor: pointer;
-    }
-    .ai-reply {
-      margin-top: 10px; font-size: 0.88rem; color: #e2e8f0; background: var(--bg);
-      padding: 10px 12px; border-radius: 12px; line-height: 1.5;
-    }
+/* المساعد */
+.mic-row{display:flex;gap:12px;align-items:center}
+.mic{flex:none;width:64px;height:64px;border-radius:50%;border:none;font-size:1.6rem;background:var(--air);color:#06242b;position:relative;transition:transform .15s}
+.mic:active{transform:scale(.94)}
+.mic.listening{background:var(--alert);color:#fff;animation:ring 1.2s infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(255,107,94,.55)}100%{box-shadow:0 0 0 20px rgba(255,107,94,0)}}
+.bubble{flex:1;min-height:64px;background:var(--bg);border-radius:18px;padding:12px 14px;font-size:.9rem;display:flex;align-items:center}
+.bubble.busy::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--air);margin-inline-start:8px;animation:blink .8s infinite alternate}
+@keyframes blink{to{opacity:.2}}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--raised);padding:8px 14px;border-radius:99px;font-size:.84rem}
+.chip:active{background:var(--line)}
+.send-row{display:flex;gap:8px;margin-top:10px}
+.send{flex:none;padding:0 18px;border:none;border-radius:14px;background:var(--text);color:var(--bg);font-weight:700}
 
-    /* الأوضاع السريعة */
-    .section-title {
-      font-size: 0.85rem; color: var(--muted); font-weight: 700; margin: 0 0 10px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .scenes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .scene-btn {
-      padding: 11px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.07);
-      background: var(--card-light); color: var(--text); font-size: 0.88rem;
-      font-weight: 600; cursor: pointer; text-align: center;
-    }
-    .scene-btn.active { background: var(--green); color: #052e16; border-color: var(--green); }
-    .scene-btn.off-all { grid-column: span 2; background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+/* الأوضاع */
+.scenes{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.scene{display:flex;align-items:center;gap:10px;padding:14px;border-radius:16px;border:1px solid var(--line);background:var(--raised);font-size:.92rem;font-weight:600;text-align:start;transition:background .2s,border-color .2s}
+.scene em{font-style:normal;font-size:1.4rem}
+.scene.active{border-color:var(--amber);background:rgba(255,198,107,.12)}
+.scene.off{grid-column:span 2;justify-content:center;color:#ffb3ab}
+.scene:active{transform:scale(.98)}
 
-    .sp-box {
-      margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.07);
-    }
+/* المناخ */
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row+.row{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.row p{margin:0;font-weight:600;font-size:.95rem}
+.row small{display:block;color:var(--muted);font-size:.78rem;font-weight:400}
+.switch{position:relative;flex:none;width:54px;height:32px;border-radius:99px;border:none;background:var(--line);transition:background .2s}
+.switch::after{content:"";position:absolute;top:4px;inset-inline-start:4px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch.on{background:var(--ok)}
+.switch.on::after{transform:translateX(-22px)}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--raised);font-size:1.3rem}
+.stepper b{min-width:62px;text-align:center;font-size:1.2rem;color:var(--air)}
+#spRow.disabled{opacity:.4;pointer-events:none}
 
-    /* بطاقات الأجهزة */
-    .device-row {
-      background: var(--card-light); padding: 12px; border-radius: 14px; margin-bottom: 10px;
-    }
-    .device-row:last-child { margin-bottom: 0; }
-    .device-top {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
-    }
-    .device-name { font-size: 0.92rem; font-weight: 600; }
-    .toggle-pill {
-      padding: 4px 12px; border-radius: 99px; border: none; font-size: 0.8rem;
-      font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.1); color: var(--muted);
-    }
-    .toggle-pill.on { background: var(--accent); color: #0b1120; }
-    input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; margin: 0; }
+/* الأجهزة */
+.dev{--c:var(--amber);background:var(--raised);border-radius:18px;padding:14px;border:1px solid transparent;transition:border-color .2s}
+.dev+.dev{margin-top:10px}
+.dev.on{border-color:color-mix(in srgb,var(--c) 45%,transparent)}
+.dev-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.dev-ico{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:1.4rem;background:var(--bg);filter:grayscale(1) brightness(.7);transition:all .3s}
+.dev.on .dev-ico{filter:none;background:color-mix(in srgb,var(--c) 22%,var(--bg));box-shadow:0 0 calc(var(--v)*.2px) color-mix(in srgb,var(--c) 70%,transparent)}
+.dev-name{flex:1;font-weight:600;font-size:.95rem}
+.dev-name small{display:block;font-weight:400;color:var(--muted);font-size:.78rem}
+.dev.auto-driven .dev-name small::after{content:" • يتحكم بها الوضع التلقائي";color:var(--ok)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:99px;background:linear-gradient(to left,var(--c) calc(var(--v)*1%),var(--bg) 0)}
+input[type=range]::-moz-range-track{height:8px;border-radius:99px;background:var(--bg)}
+input[type=range]::-moz-range-progress{height:8px;border-radius:99px;background:var(--c)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-9px;border-radius:50%;background:#fff;border:none;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:none}
 
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-  </style>
+.toast{position:fixed;inset-inline:0;bottom:calc(22px + env(safe-area-inset-bottom,0px));margin:auto;width:max-content;max-width:88%;background:var(--text);color:var(--bg);padding:11px 18px;border-radius:99px;font-weight:600;font-size:.88rem;opacity:0;transform:translateY(16px);pointer-events:none;transition:all .25s;z-index:9}
+.toast.show{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:370px){.hero{flex-direction:column}}
+</style>
 </head>
 <body>
-<div class="app">
+<main class="app">
 
-  <!-- الشريط العلوي -->
-  <div class="topbar">
+  <header class="topbar">
     <h1>غرفتي الذكية</h1>
     <div class="top-actions">
-      <div class="status-dot" id="connBadge">جاري الاتصال...</div>
-      <button class="icon-btn" onclick="toggleSettings()" title="إعدادات المفتاح">⚙️</button>
+      <div class="badge" id="conn"><i></i><span>جاري الاتصال</span></div>
+      <button class="icon-btn" id="gear" aria-label="إعدادات المفتاح">⚙️</button>
     </div>
-  </div>
+  </header>
 
-  <!-- إعداد مفتاح الذكاء الاصطناعي -->
-  <div class="settings-drawer" id="settingsBox">
-    <label>مفتاح Groq API (يُحفظ تلقائياً في هاتفك):</label>
-    <input type="password" id="apiKey" placeholder="الصق المفتاح هنا (gsk_...)">
-  </div>
+  <section class="drawer" id="drawer">
+    <label for="apiKey">مفتاح Groq API (يُحفظ في هذا الجهاز فقط)</label>
+    <input type="password" id="apiKey" placeholder="gsk_..." autocomplete="off">
+  </section>
 
-  <!-- تنبيه الحرارة العالية -->
-  <div class="alert" id="safetyBanner">🚨 تنبيه: حرارة الغرفة مرتفعة جداً!</div>
+  <div class="alert" id="alert" role="alert">🚨 حرارة الغرفة مرتفعة جداً</div>
 
-  <!-- القراءات الحية -->
-  <div class="metrics">
-    <div class="metric-card">
-      <div class="metric-val" id="tempDisp">--°</div>
-      <div class="metric-lbl">🌡️ الحرارة</div>
+  <section class="hero" id="hero">
+    <div class="gauge">
+      <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="fill" id="ring" cx="60" cy="60" r="52"/></svg>
+      <div class="center"><b id="tempDisp">--°</b><span>الحرارة</span></div>
     </div>
-    <div class="metric-card">
-      <div class="metric-val" id="humDisp">--%</div>
-      <div class="metric-lbl">💧 الرطوبة</div>
+    <div class="stats">
+      <div class="stat"><em>💧</em><div><b id="humDisp">--%</b><small>الرطوبة</small></div></div>
+      <div class="stat"><em>☀️</em><div><b id="lightDisp">--%</b><small>الإضاءة</small></div></div>
     </div>
-    <div class="metric-card">
-      <div class="metric-val" id="lightDisp">--%</div>
-      <div class="metric-lbl">☀️ الإضاءة</div>
-    </div>
-  </div>
+  </section>
 
-  <!-- المساعد الصوتي -->
-  <div class="card">
-    <button class="mic-btn" id="micBtn" onclick="startVoice()">🎙️ اضغط للتحدث مع الغرفة</button>
-    <div class="input-group">
-      <input type="text" id="textCmd" placeholder="أو اكتب طلبك هنا..." onkeydown="if(event.key==='Enter') sendTextCmd()">
-      <button class="send-btn" onclick="sendTextCmd()">إرسال</button>
+  <section class="card">
+    <h2>المساعد الصوتي</h2>
+    <div class="mic-row">
+      <button class="mic" id="mic" aria-label="تحدث مع الغرفة">🎙️</button>
+      <div class="bubble" id="reply">اضغط الميكروفون وقل طلبك، أو اختر اقتراحاً.</div>
     </div>
-    <div class="ai-reply" id="aiLog">أهلاً! قل مثلاً: "شغّل ضوء المكتب" أو "فعّل وضع النوم".</div>
-  </div>
+    <div class="chips" id="chips"></div>
+    <form class="send-row" id="textForm">
+      <input type="text" id="textCmd" placeholder="اكتب طلبك هنا" enterkeyhint="send">
+      <button class="send" type="submit">إرسال</button>
+    </form>
+  </section>
 
-  <!-- الأوضاع الذكية -->
-  <div class="card">
-    <div class="section-title">
-      <span>⚡ الأوضاع السريعة</span>
-      <span id="timerText" style="color:#c084fc;"></span>
+  <section class="card">
+    <h2><span>الأوضاع السريعة</span><span class="timer" id="timer"></span></h2>
+    <div class="scenes" id="scenes">
+      <button class="scene" data-s="study"><em>📚</em>وضع الدراسة</button>
+      <button class="scene" data-s="cinema"><em>🎬</em>وضع السينما</button>
+      <button class="scene" data-s="sleep"><em>🌙</em>وضع النوم</button>
+      <button class="scene" data-s="work"><em>💻</em>وضع العمل</button>
+      <button class="scene off" data-s="off">🛑 إطفاء كل الأجهزة</button>
     </div>
-    <div class="scenes">
-      <button class="scene-btn active" id="autoBtn" onclick="toggleAuto()">🤖 تلقائي ذكي</button>
-      <button class="scene-btn" onclick="setScene('study')">📚 وضع الدراسة</button>
-      <button class="scene-btn" onclick="setScene('cinema')">🎬 وضع السينما</button>
-      <button class="scene-btn" onclick="setScene('sleep')">🌙 وضع النوم</button>
-      <button class="scene-btn off-all" onclick="setScene('off')">🛑 إطفاء كل الأجهزة</button>
-    </div>
+  </section>
 
-    <div class="sp-box" id="spBox">
-      <div class="section-title" style="margin-bottom:4px;">
-        <span>🎯 درجة التبريد المطلوبة</span>
-        <b id="spVal" style="color:var(--accent);">26°C</b>
+  <section class="card">
+    <h2>التبريد</h2>
+    <div class="row">
+      <p>الوضع التلقائي<small>يضبط السقف والمروحة حسب الحرارة</small></p>
+      <button class="switch on" id="autoSw" role="switch" aria-checked="true" aria-label="الوضع التلقائي"></button>
+    </div>
+    <div class="row" id="spRow">
+      <p>الحرارة المطلوبة</p>
+      <div class="stepper">
+        <button id="spPlus" aria-label="زيادة">+</button>
+        <b id="spVal">26°C</b>
+        <button id="spMinus" aria-label="إنقاص">−</button>
       </div>
-      <input type="range" min="18" max="35" value="26" oninput="updateSetpoint(this.value)">
     </div>
-  </div>
+  </section>
 
-  <!-- التحكم المباشر بالأجهزة -->
-  <div class="card">
-    <div class="section-title"><span>🎛️ التحكم بالأجهزة</span></div>
+  <section class="card">
+    <h2>الأجهزة</h2>
+    <div id="devices"></div>
+  </section>
 
-    <div class="device-row">
-      <div class="device-top">
-        <span class="device-name">💡 إضاءة السقف</span>
-        <button class="toggle-pill" id="mainPill" onclick="quickToggle('main')">0%</button>
-      </div>
-      <input type="range" id="mainSlider" min="0" max="100" value="0" oninput="onSlider('main', true)">
-    </div>
-
-    <div class="device-row">
-      <div class="device-top">
-        <span class="device-name">🛋️ إضاءة المكتب</span>
-        <button class="toggle-pill" id="deskPill" onclick="quickToggle('desk')">0%</button>
-      </div>
-      <input type="range" id="deskSlider" min="0" max="100" value="0" oninput="onSlider('desk', false)">
-    </div>
-
-    <div class="device-row">
-      <div class="device-top">
-        <span class="device-name">✨ الإضاءة الليلية</span>
-        <button class="toggle-pill" id="nightPill" onclick="quickToggle('night')">0%</button>
-      </div>
-      <input type="range" id="nightSlider" min="0" max="100" value="0" oninput="onSlider('night', false)">
-    </div>
-
-    <div class="device-row">
-      <div class="device-top">
-        <span class="device-name">🌀 مروحة التبريد</span>
-        <button class="toggle-pill" id="fanPill" onclick="quickToggle('fan')">0%</button>
-      </div>
-      <input type="range" id="fanSlider" min="0" max="100" value="0" oninput="onSlider('fan', true)">
-    </div>
-  </div>
-
-</div>
+</main>
+<div class="toast" id="toast"></div>
 
 <script>
-  let isAuto = true, targetTemp = 26, liveTemp = 25, liveHum = 50, liveLight = 50;
-  let alarmSpoken = false;
+const TOPIC_CMD="ameer/smartroom/2026/cmd", TOPIC_STATUS="ameer/smartroom/2026/status";
+const DEV=[
+  {id:'main', name:'إضاءة السقف', ico:'💡', c:'#ffc66b', auto:true},
+  {id:'desk', name:'إضاءة المكتب', ico:'🖥️', c:'#ffd9a0'},
+  {id:'night',name:'الإضاءة الليلية', ico:'✨', c:'#b9a6ff'},
+  {id:'fan',  name:'مروحة التبريد', ico:'🌀', c:'#6fd3e6', auto:true}
+];
+const SCENES={
+  study :{main:0,desk:100,night:0,fan:null,auto:true,sp:23,msg:'📚 تم تفعيل وضع الدراسة'},
+  cinema:{main:0,desk:0,night:35,fan:40,auto:false,msg:'🎬 تم تفعيل وضع السينما'},
+  sleep :{main:0,desk:0,night:15,fan:30,auto:false,msg:'🌙 تصبح على خير، تم تفعيل وضع النوم'},
+  work  :{main:80,desk:70,night:0,fan:null,auto:true,sp:25,msg:'💻 تم تفعيل وضع العمل'},
+  off   :{main:0,desk:0,night:0,fan:0,auto:false,msg:'🛑 تم إطفاء جميع الأجهزة'}
+};
+const SUGGEST=['شغّل ضوء المكتب','فعّل وضع النوم','الجو حار','اطفئ المروحة','أطفئ كل شيء','ذكّرني بعد 10 دقائق'];
 
-  const TOPIC_CMD    = "ameer/smartroom/2026/cmd";
-  const TOPIC_STATUS = "ameer/smartroom/2026/status";
+const $=id=>document.getElementById(id);
+let isAuto=true, targetTemp=26, liveTemp=25, liveHum=50, liveLight=50;
+let alarmSpoken=false, activeScene=null;
+const state={main:0,desk:0,night:0,fan:0};
 
-  // حفظ واسترجاع المفتاح
-  const keyInput = document.getElementById('apiKey');
-  keyInput.value = localStorage.getItem('groq_key') || '';
-  if (!keyInput.value) document.getElementById('settingsBox').style.display = 'block';
-  keyInput.addEventListener('input', () => localStorage.setItem('groq_key', keyInput.value.trim()));
+/* ===== واجهة ===== */
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),1800)}
+function buzz(){if(navigator.vibrate)navigator.vibrate(12)}
+function say(msg,busy){const r=$('reply');r.textContent=msg;r.classList.toggle('busy',!!busy)}
 
-  function toggleSettings() {
-    const box = document.getElementById('settingsBox');
-    box.style.display = box.style.display === 'block' ? 'none' : 'block';
-  }
+// بناء بطاقات الأجهزة
+$('devices').innerHTML=DEV.map(d=>`
+  <div class="dev" id="dev-${d.id}" style="--c:${d.c};--v:0">
+    <div class="dev-top">
+      <div class="dev-ico">${d.ico}</div>
+      <div class="dev-name">${d.name}<small id="lbl-${d.id}">مطفأ</small></div>
+      <button class="switch" id="sw-${d.id}" role="switch" aria-checked="false" aria-label="${d.name}"></button>
+    </div>
+    <input type="range" id="sl-${d.id}" min="0" max="100" value="0" aria-label="شدة ${d.name}">
+  </div>`).join('');
+$('chips').innerHTML=SUGGEST.map(s=>`<button class="chip" type="button">${s}</button>`).join('');
 
-  // الاتصال السحابي MQTT
-  const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
-  client.on('connect', () => {
-    const badge = document.getElementById('connBadge');
-    badge.innerText = "متصل 🟢";
-    badge.classList.add('online');
-    client.subscribe(TOPIC_STATUS);
+function setControl(name,val){
+  state[name]=val;
+  const el=$('dev-'+name);
+  $('sl-'+name).value=val;
+  el.style.setProperty('--v',val);
+  el.classList.toggle('on',val>0);
+  const sw=$('sw-'+name); sw.classList.toggle('on',val>0); sw.setAttribute('aria-checked',val>0);
+  $('lbl-'+name).textContent=val>0?val+'%':'مطفأ';
+  updateGlow(); updateAutoDriven();
+}
+function updateGlow(){
+  const g=Math.max(state.main,state.desk*.8,state.night*.5)/100;
+  document.documentElement.style.setProperty('--glow',g.toFixed(2));
+}
+function updateAutoDriven(){
+  DEV.forEach(d=>{ if(d.auto) $('dev-'+d.id).classList.toggle('auto-driven',isAuto) });
+}
+function updateAutoUI(on){
+  isAuto=on;
+  $('autoSw').classList.toggle('on',on); $('autoSw').setAttribute('aria-checked',on);
+  $('spRow').classList.toggle('disabled',!on);
+  updateAutoDriven();
+}
+function updateSP(v){
+  targetTemp=Math.min(35,Math.max(18,v));
+  $('spVal').textContent=targetTemp+'°C';
+  updateRing();
+}
+function updateRing(){
+  const frac=Math.min(1,Math.max(0,(liveTemp-15)/30));
+  const ring=$('ring');
+  ring.style.strokeDashoffset=326.7*(1-frac);
+  ring.style.stroke=liveTemp>=38?'var(--alert)':liveTemp>targetTemp+1?'var(--amber)':'var(--air)';
+}
+function markScene(s){
+  activeScene=s;
+  document.querySelectorAll('.scene').forEach(b=>b.classList.toggle('active',b.dataset.s===s));
+}
+
+/* ===== MQTT ===== */
+let sendT;
+function sendCmd(extra={}){
+  if(!client.connected) return toast('غير متصل بالغرفة');
+  client.publish(TOPIC_CMD,JSON.stringify({...state,auto:isAuto,sp:targetTemp,...extra}));
+}
+function sendSoon(){clearTimeout(sendT);sendT=setTimeout(()=>sendCmd(),100)}
+
+const badge=$('conn');
+function setBadge(cls,txt){badge.className='badge '+cls;badge.querySelector('span').textContent=txt}
+const client=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{reconnectPeriod:3000});
+client.on('connect',()=>{setBadge('online','متصل');client.subscribe(TOPIC_STATUS)});
+client.on('reconnect',()=>setBadge('','إعادة الاتصال'));
+client.on('offline',()=>setBadge('offline','غير متصل'));
+client.on('error',()=>setBadge('offline','خطأ اتصال'));
+
+client.on('message',(topic,message)=>{
+  if(topic!==TOPIC_STATUS) return;
+  let d; try{d=JSON.parse(message.toString())}catch{return}
+  liveTemp=d.temp; liveHum=d.hum; liveLight=d.light;
+  $('tempDisp').textContent=liveTemp.toFixed(1)+'°';
+  $('humDisp').textContent=liveHum+'%';
+  $('lightDisp').textContent=liveLight+'%';
+  $('timer').textContent=d.rem>0?`⏱️ ${d.rem} ث`:'';
+  updateRing();
+  const hot=liveTemp>=38;
+  $('alert').classList.toggle('show',hot);
+  if(hot){ if(!alarmSpoken){speak('تحذير، حرارة الغرفة مرتفعة');alarmSpoken=true} } else alarmSpoken=false;
+  if(d.auto!==isAuto) updateAutoUI(d.auto);
+  if(isAuto){ setControl('main',d.main); setControl('fan',d.fan); }
+});
+
+/* ===== تفاعل المستخدم ===== */
+$('gear').onclick=()=>$('drawer').classList.toggle('open');
+const keyInput=$('apiKey');
+keyInput.value=localStorage.getItem('groq_key')||'';
+if(!keyInput.value) $('drawer').classList.add('open');
+keyInput.addEventListener('input',()=>localStorage.setItem('groq_key',keyInput.value.trim()));
+
+DEV.forEach(d=>{
+  $('sl-'+d.id).addEventListener('input',e=>{
+    if(d.auto&&isAuto) updateAutoUI(false);
+    markScene(null);
+    setControl(d.id,+e.target.value); sendSoon();
   });
-
-  client.on('message', (topic, message) => {
-    if (topic !== TOPIC_STATUS) return;
-    const d = JSON.parse(message.toString());
-    liveTemp = d.temp; liveHum = d.hum; liveLight = d.light;
-
-    document.getElementById('tempDisp').innerText  = liveTemp.toFixed(1) + '°';
-    document.getElementById('humDisp').innerText   = liveHum + '%';
-    document.getElementById('lightDisp').innerText = liveLight + '%';
-
-    document.getElementById('timerText').innerText = d.rem > 0 ? `⏱️ ${d.rem}ث` : '';
-
-    const banner = document.getElementById('safetyBanner');
-    if (liveTemp >= 38.0) {
-      banner.style.display = 'block';
-      if (!alarmSpoken) { speak("تحذير، حرارة الغرفة مرتفعة"); alarmSpoken = true; }
-    } else {
-      banner.style.display = 'none'; alarmSpoken = false;
-    }
-
-    if (d.auto !== isAuto) updateAutoUI(d.auto);
-    if (isAuto) {
-      setControl('main', d.main);
-      setControl('fan', d.fan);
-    }
+  $('sw-'+d.id).addEventListener('click',()=>{
+    if(d.auto&&isAuto) updateAutoUI(false);
+    markScene(null); buzz();
+    setControl(d.id,state[d.id]>0?0:100); sendCmd();
   });
+});
 
-  function setControl(name, val) {
-    document.getElementById(name + 'Slider').value = val;
-    const pill = document.getElementById(name + 'Pill');
-    pill.innerText = val > 0 ? val + '%' : 'مطفأ';
-    pill.classList.toggle('on', val > 0);
+$('autoSw').onclick=()=>{
+  updateAutoUI(!isAuto); buzz(); markScene(null); sendCmd();
+  toast(isAuto?'الوضع التلقائي يعمل':'التحكم اليدوي');
+};
+$('spPlus').onclick =()=>{updateSP(targetTemp+1);buzz();sendSoon()};
+$('spMinus').onclick=()=>{updateSP(targetTemp-1);buzz();sendSoon()};
+
+function applyScene(name){
+  const s=SCENES[name]; if(!s) return;
+  buzz();
+  ['main','desk','night','fan'].forEach(k=>{ if(s[k]!==null&&s[k]!==undefined) setControl(k,s[k]) });
+  if(s.sp) updateSP(s.sp);
+  updateAutoUI(s.auto);
+  markScene(name);
+  sendCmd();
+  say(s.msg); toast(s.msg);
+}
+$('scenes').addEventListener('click',e=>{const b=e.target.closest('.scene'); if(b) applyScene(b.dataset.s)});
+
+/* ===== المساعد ===== */
+$('chips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  say('أنت: '+c.textContent); askAI(c.textContent);
+});
+$('textForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const i=$('textCmd'), t=i.value.trim(); if(!t) return;
+  i.value=''; say('أنت: '+t); askAI(t);
+});
+$('mic').onclick=()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return toast('استخدم متصفح Chrome للصوت');
+  const rec=new SR(), mic=$('mic');
+  rec.lang='ar-IQ';
+  mic.classList.add('listening'); say('👂 أستمع إليك...');
+  rec.onresult=e=>{const t=e.results[0][0].transcript; say('أنت: '+t); askAI(t)};
+  rec.onerror=()=>{say('لم أسمعك جيداً، حاول مرة أخرى')};
+  rec.onend=()=>mic.classList.remove('listening');
+  rec.start();
+};
+
+async function askAI(userText){
+  const apiKey=keyInput.value.trim();
+  if(!apiKey){
+    $('drawer').classList.add('open'); window.scrollTo({top:0});
+    return say('⚠️ أدخل مفتاح Groq API في الأعلى أولاً');
   }
-
-  function sendCmd(extra = {}) {
-    client.publish(TOPIC_CMD, JSON.stringify({
-      main:  +document.getElementById('mainSlider').value,
-      desk:  +document.getElementById('deskSlider').value,
-      night: +document.getElementById('nightSlider').value,
-      fan:   +document.getElementById('fanSlider').value,
-      auto: isAuto, sp: targetTemp, ...extra
-    }));
-  }
-
-  function updateAutoUI(state) {
-    isAuto = state;
-    document.getElementById('autoBtn').classList.toggle('active', isAuto);
-    document.getElementById('spBox').style.display = isAuto ? 'block' : 'none';
-  }
-
-  function toggleAuto() {
-    updateAutoUI(!isAuto);
-    sendCmd();
-  }
-
-  function updateSetpoint(val) {
-    targetTemp = +val;
-    document.getElementById('spVal').innerText = val + '°C';
-    sendCmd();
-  }
-
-  function onSlider(name, breaksAuto) {
-    if (breaksAuto && isAuto) updateAutoUI(false);
-    setControl(name, +document.getElementById(name + 'Slider').value);
-    sendCmd();
-  }
-
-  function quickToggle(name) {
-    const current = +document.getElementById(name + 'Slider').value;
-    const next = current > 0 ? 0 : 100;
-    if ((name === 'main' || name === 'fan') && isAuto) updateAutoUI(false);
-    setControl(name, next);
-    sendCmd();
-  }
-
-  function setScene(mode) {
-    if (mode === 'study') {
-      targetTemp = 23; document.getElementById('spVal').innerText = '23°C';
-      setControl('desk', 100); setControl('night', 0);
-      updateAutoUI(true); sendCmd({ sp: 23, desk: 100, night: 0, auto: true });
-      document.getElementById('aiLog').innerText = "📚 تم تفعيل وضع الدراسة.";
-    } else if (mode === 'cinema') {
-      updateAutoUI(false);
-      setControl('main', 0); setControl('desk', 0); setControl('night', 35); setControl('fan', 40);
-      sendCmd({ main: 0, desk: 0, night: 35, fan: 40, auto: false });
-      document.getElementById('aiLog').innerText = "🎬 تم تفعيل وضع السينما.";
-    } else if (mode === 'sleep') {
-      updateAutoUI(false);
-      setControl('main', 0); setControl('desk', 0); setControl('night', 15); setControl('fan', 30);
-      sendCmd({ main: 0, desk: 0, night: 15, fan: 30, auto: false });
-      document.getElementById('aiLog').innerText = "🌙 تصبح على خير! تم تفعيل وضع النوم.";
-    } else if (mode === 'off') {
-      updateAutoUI(false);
-      ['main', 'desk', 'night', 'fan'].forEach(n => setControl(n, 0));
-      sendCmd({ main: 0, desk: 0, night: 0, fan: 0, auto: false });
-      document.getElementById('aiLog').innerText = "🛑 تم إطفاء جميع أجهزة الغرفة.";
+  say('جاري التنفيذ',true);
+  const prompt=`أنت مساعد غرفة ذكية. الحالة: حرارة ${liveTemp}°C، رطوبة ${liveHum}%، إضاءة ${liveLight}%، السقف(main): ${state.main}%، المكتب(desk): ${state.desk}%، الليلية(night): ${state.night}%، المروحة(fan): ${state.fan}%، التلقائي: ${isAuto}.
+أرجع JSON فقط: {"main":0-100 أو -1,"desk":0-100 أو -1,"night":0-100 أو -1,"fan":0-100 أو -1,"auto":true/false/null,"timer":ثواني أو -1,"reply":"رد عربي قصير"}`;
+  try{
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+      body:JSON.stringify({
+        model:'openai/gpt-oss-20b',
+        messages:[{role:'system',content:prompt},{role:'user',content:userText}],
+        response_format:{type:'json_object'},temperature:0.2
+      })
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error?.message||res.status);
+    const cmd=JSON.parse(data.choices[0].message.content);
+    if(cmd.auto!==null&&cmd.auto!==undefined&&cmd.auto!==isAuto) updateAutoUI(cmd.auto);
+    if(cmd.desk>=0) setControl('desk',cmd.desk);
+    if(cmd.night>=0) setControl('night',cmd.night);
+    if(!isAuto){
+      if(cmd.main>=0) setControl('main',cmd.main);
+      if(cmd.fan>=0) setControl('fan',cmd.fan);
     }
+    markScene(null);
+    sendCmd(cmd.timer>0?{timer:cmd.timer}:{});
+    say('🤖 '+cmd.reply); speak(cmd.reply);
+  }catch(e){
+    say('❌ تعذر التنفيذ: '+e.message);
   }
-
-  // المساعد الصوتي والنصي
-  function startVoice() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return alert("يرجى استخدام متصفح Chrome للصوت.");
-    const rec = new SR();
-    rec.lang = 'ar-IQ';
-    const btn = document.getElementById('micBtn');
-    btn.classList.add('listening'); btn.innerText = "👂 أستمع إليك...";
-    rec.onresult = (e) => {
-      const text = e.results[0][0].transcript;
-      document.getElementById('aiLog').innerText = "أنت: " + text;
-      askAI(text);
-    };
-    rec.onend = () => { btn.classList.remove('listening'); btn.innerText = "🎙️ اضغط للتحدث مع الغرفة"; };
-    rec.start();
+}
+function speak(text){
+  if('speechSynthesis' in window){
+    const u=new SpeechSynthesisUtterance(text); u.lang='ar-SA';
+    speechSynthesis.speak(u);
   }
+}
 
-  function sendTextCmd() {
-    const input = document.getElementById('textCmd');
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-    document.getElementById('aiLog').innerText = "أنت: " + text;
-    askAI(text);
-  }
-
-  async function askAI(userText) {
-    const apiKey = keyInput.value.trim();
-    if (!apiKey) {
-      document.getElementById('settingsBox').style.display = 'block';
-      document.getElementById('aiLog').innerText = "⚠️ أدخل مفتاح Groq API في الأعلى أولاً.";
-      return;
-    }
-    document.getElementById('aiLog').innerText = "⏳ جاري التنفيذ...";
-
-    const prompt = `أنت مساعد غرفة ذكية. الحالة: حرارة ${liveTemp}°C، رطوبة ${liveHum}%، إضاءة ${liveLight}%، السقف(main): ${document.getElementById('mainSlider').value}%، المكتب(desk): ${document.getElementById('deskSlider').value}%، الليلية(night): ${document.getElementById('nightSlider').value}%، المروحة(fan): ${document.getElementById('fanSlider').value}%، التلقائي: ${isAuto}.
-    أرجع JSON فقط: {"main":0-100 أو -1,"desk":0-100 أو -1,"night":0-100 أو -1,"fan":0-100 أو -1,"auto":true/false/null,"timer":ثواني أو -1,"reply":"رد عربي قصير"}`;
-
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-20b',
-          messages: [{ role: 'system', content: prompt }, { role: 'user', content: userText }],
-          response_format: { type: "json_object" }, temperature: 0.2
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || res.status);
-
-      const cmd = JSON.parse(data.choices[0].message.content);
-      if (cmd.auto !== null && cmd.auto !== isAuto) updateAutoUI(cmd.auto);
-      if (cmd.desk >= 0)  setControl('desk', cmd.desk);
-      if (cmd.night >= 0) setControl('night', cmd.night);
-      if (!isAuto) {
-        if (cmd.main >= 0) setControl('main', cmd.main);
-        if (cmd.fan >= 0)  setControl('fan', cmd.fan);
-      }
-      sendCmd(cmd.timer > 0 ? { timer: cmd.timer } : {});
-      document.getElementById('aiLog').innerText = "🤖 " + cmd.reply;
-      speak(cmd.reply);
-    } catch (e) {
-      document.getElementById('aiLog').innerText = "❌ خطأ: " + e.message;
-    }
-  }
-
-  function speak(text) {
-    if ('speechSynthesis' in window) {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      window.speechSynthesis.speak(u);
-    }
-  }
+// حالة البداية
+DEV.forEach(d=>setControl(d.id,0));
+updateAutoUI(true); updateSP(targetTemp);
 </script>
 </body>
 </html>
