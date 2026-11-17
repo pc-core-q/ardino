@@ -86,7 +86,7 @@ input[type=range]::-moz-range-progress{height:6px;border-radius:99px;background:
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;background:#fff;border:none;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:none}
 
-/* التبريد */
+/* التبريد واختبار الحريق */
 .climate{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:14px 16px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .row p{margin:0;font-weight:600;font-size:.95rem}
@@ -100,6 +100,15 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .stepper{display:flex;align-items:center;gap:6px}
 .stepper button{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:var(--raised);font-size:1.3rem}
 .stepper b{min-width:64px;text-align:center;font-size:1.2rem;color:var(--air)}
+
+.fire-test{
+  width:100%;margin-top:14px;padding:12px 14px;border-radius:14px;
+  border:1px solid rgba(255,107,94,.45);background:rgba(255,107,94,.12);
+  color:#ffb3ab;font-weight:600;font-size:.88rem;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;
+}
+.fire-test.active{background:var(--alert);color:#2a0905;border-color:var(--alert)}
+.fire-test:active{transform:scale(.98)}
 
 /* شريط المساعد السفلي */
 .dock{position:fixed;inset-inline:0;bottom:0;display:flex;justify-content:center;padding:0 14px calc(14px + env(safe-area-inset-bottom,0px));pointer-events:none;z-index:5;
@@ -178,6 +187,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
         <button id="spMinus" aria-label="إنقاص">−</button>
       </div>
     </div>
+    <button class="fire-test" id="fireTestBtn" type="button">🚨 اختبار إنذار الحريق (الجرس)</button>
   </section>
 
 </main>
@@ -212,7 +222,7 @@ const SCENES={
 
 const $=id=>document.getElementById(id);
 let isAuto=true, targetTemp=26, liveTemp=25, liveHum=50, liveLight=50;
-let alarmSpoken=false;
+let alarmSpoken=false, fireTesting=false, fireTestTimer=null;
 const state={main:0,desk:0,night:0,fan:0};
 
 /* ===== واجهة ===== */
@@ -260,7 +270,7 @@ function updateRing(){
   const frac=Math.min(1,Math.max(0,(liveTemp-15)/30));
   const ring=$('ring');
   ring.style.strokeDashoffset=326.7*(1-frac);
-  ring.style.stroke=liveTemp>=38?'var(--alert)':liveTemp>targetTemp+1?'var(--amber)':'var(--air)';
+  ring.style.stroke=(liveTemp>=38||fireTesting)?'var(--alert)':liveTemp>targetTemp+1?'var(--amber)':'var(--air)';
 }
 function markScene(s){
   document.querySelectorAll('.scene').forEach(b=>b.classList.toggle('active',b.dataset.s===s));
@@ -290,12 +300,45 @@ client.on('message',(topic,message)=>{
   $('lightDisp').textContent=liveLight+'%';
   const tm=$('timer'); tm.hidden=!(d.rem>0); tm.textContent=`⏱️ ${d.rem} ث`;
   updateRing();
-  const hot=liveTemp>=38;
+  const hot=liveTemp>=38 || fireTesting;
   $('alert').classList.toggle('show',hot);
-  if(hot){ if(!alarmSpoken){speak('تحذير، حرارة الغرفة مرتفعة');alarmSpoken=true} } else alarmSpoken=false;
+  if(liveTemp>=38){ if(!alarmSpoken){speak('تحذير، حرارة الغرفة مرتفعة');alarmSpoken=true} } else alarmSpoken=false;
   if(d.auto!==isAuto) updateAutoUI(d.auto);
   if(isAuto){ setControl('main',d.main); setControl('fan',d.fan); }
 });
+
+/* ===== اختبار إنذار الحريق ===== */
+function stopFireTest(){
+  fireTesting=false;
+  clearTimeout(fireTestTimer);
+  const btn=$('fireTestBtn');
+  btn.classList.remove('active');
+  btn.textContent='🚨 اختبار إنذار الحريق (الجرس)';
+  $('alert').classList.toggle('show',liveTemp>=38);
+  updateRing();
+}
+
+$('fireTestBtn').onclick=()=>{
+  if(!client.connected) return toast('غير متصل بالغرفة');
+  buzz();
+  if(fireTesting){
+    client.publish(TOPIC_CMD,JSON.stringify({fireTest:0}));
+    stopFireTest();
+    toast('تم إيقاف اختبار الإنذار');
+  }else{
+    fireTesting=true;
+    const btn=$('fireTestBtn');
+    btn.classList.add('active');
+    btn.textContent='⏹️ إيقاف اختبار إنذار الحريق';
+    $('alert').classList.add('show');
+    updateRing();
+    client.publish(TOPIC_CMD,JSON.stringify({fireTest:1}));
+    speak('تحذير، اختبار إنذار الحريق');
+    toast('🚨 جاري اختبار الجرس لمدة 5 ثوانٍ');
+    clearTimeout(fireTestTimer);
+    fireTestTimer=setTimeout(stopFireTest,5000);
+  }
+};
 
 /* ===== تفاعل المستخدم ===== */
 $('gear').onclick=()=>$('drawer').classList.toggle('open');
@@ -331,7 +374,7 @@ function applyScene(name){
   if(s.sp) updateSP(s.sp);
   updateAutoUI(s.auto);
   markScene(name);
-  sendCmd();
+  sendCmd({mode:name});
   toast(s.msg);
 }
 $('scenes').addEventListener('click',e=>{const b=e.target.closest('.scene'); if(b) applyScene(b.dataset.s)});
